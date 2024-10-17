@@ -1,0 +1,3 @@
+*.o
+release_object_files/
+debug_object_files/
