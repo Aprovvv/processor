@@ -1,9 +1,6 @@
-push 6
-push 3
-div
+push 12
+lbl l0
+push 1488
 out
-push 2
-push 5
-mult
-out
+jmp l0
 hlt

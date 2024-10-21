@@ -1,24 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "stack/stack.h"
 #include "cmds.h"
 
-struct darr {
-    size_t capacity;
-    size_t size;
-    long* ptr;
+struct lbl_t {
+    long addr;
+    char name[LBL_SIZE];
 };
 
 struct spu {
     struct stack_t* stk;
     int ip;
-    struct darr code;
+    struct stack_t* code;
+    struct stack_t* lbl_stack;
 };
 
 static int pr (const void* p);
-static int darr_init(struct darr* str_ptr, size_t start_capacity);
-static int darr_add(struct darr* str_ptr, long val);
+static void get_str(FILE* fp, char* str, int size);
 
 int main()
 {
@@ -27,27 +27,59 @@ int main()
 
     struct spu proc= {};
     proc.stk = stack_init(sizeof(int), 4);
+    proc.code = stack_init(sizeof(int), 4);
+    proc.lbl_stack = stack_init(sizeof(struct lbl_t), 4);
     FILE* fp = fopen("cmds.txt", "r");
-    darr_init(&proc.code, 4);
     while (fscanf(fp, "%ld", &cmd) != EOF)
     {
-        darr_add(&proc.code, cmd);
+        printf("cmd = %d\n", cmd);
+        stack_push(proc.code, &cmd);
+        if (cmd == lbl)
+        {
+            struct lbl_t l = {};
+            get_str(fp, l.name, LBL_SIZE);
+            l.addr = (long)ip;
+            stack_push(proc.lbl_stack, &l);
+        }
+        else if (cmd == jmp)
+        {
+            char name[LBL_SIZE] = "";
+            struct lbl_t l = {};
+            get_str(fp, name, LBL_SIZE);
+            printf("name = %s\n", name);
+            for (size_t i = 0; i < stack_size(proc.lbl_stack); i++)
+            {
+                stack_view(proc.lbl_stack, i, &l);
+                if (strcmp(name, l.name) == 0)
+                {
+                    stack_push(proc.code, &l.addr);
+                    ip++;
+                    break;
+                }
+            }
+        }
+        ip++;
     }
-    /*for(size_t i = 0; i < proc.code.capacity; i++)
+    ip = 0;
+    for(size_t i = 0; i < stack_size(proc.code); i++)
     {
-        printf("%ld ", proc.code.ptr[i]);
-    }*/
+        long x;
+        stack_view(proc.code, i, &x);
+        printf("%ld ", x);
+    }
+    putchar('\n');
 
-    for(ip = 0; ip < proc.code.size; ip++)
+    for(ip = 0; ip < stack_size(proc.code); ip++)
     {
         long a, b;
-        cmd = proc.code.ptr[ip];
+        stack_view(proc.code, ip, &cmd);
         //printf("cmd = %ld\n", cmd);
-        //stack_printf(stk, pr);
+        //stack_printf(proc.stk, pr);
         switch (cmd)
         {
             case push:
-                a = proc.code.ptr[++ip];
+                stack_view(proc.code, ++ip, &a);
+                //printf("a = %ld\n", a);
                 stack_push(proc.stk, &a);
                 break;
             case sum:
@@ -81,6 +113,16 @@ int main()
             case hlt:
                 goto stop_reading;
                 break;
+            case lbl:
+                break;
+            case jmp:
+            {
+                long addr = (long)++ip;
+                stack_view(proc.code, ip, &addr);
+                ip = (size_t)addr;
+                //abort();
+                break;
+            }
             default:
                 fprintf(stderr, "SNTXERR %ld\n", cmd);
                 goto stop_reading;
@@ -88,39 +130,30 @@ int main()
         }
     }
 stop_reading:
-    free(proc.code.ptr);
+    stack_destroy(proc.lbl_stack);
+    stack_destroy(proc.code);
     stack_destroy(proc.stk);
 }
 
 static int pr (const void* p)
 {
-    const int* pi = (const int*)p;
-    fprintf(stderr, "%d", *pi);
+    const long* pi = (const long*)p;
+    fprintf(stderr, "%ld", *pi);
     return 0;
 }
 
-static int darr_init(struct darr* str_ptr, size_t start_capacity)
+static void get_str(FILE* fp, char* str, int size)
 {
-    str_ptr->ptr = (long*)calloc(sizeof(long), start_capacity);
-    if (str_ptr == NULL)
-        return 1;
-    str_ptr->capacity = start_capacity;
-    str_ptr->size = 0;
-    return 0;
-}
-
-static int darr_add(struct darr* str_ptr, long val)
-{
-    if (str_ptr->capacity <= str_ptr->size)
+    int i = 0, ch = 0;
+    fgetc(fp);
+    while (i < size)
     {
-        long* temp_ptr = (long*)realloc(str_ptr->ptr, sizeof(long)*str_ptr->capacity*2);
-        if (temp_ptr == NULL)
-            return 1;
-        str_ptr->capacity *= 2;
-        str_ptr->ptr = temp_ptr;
+        ch = fgetc(fp);
+        //putchar(ch);
+        if (ch == 0 || isspace(ch))
+            break;
+        str[i] = ch;
+        i++;
     }
-    //fprintf(stderr, "size = %zu cap = %zu\n", str_ptr->size, str_ptr->capacity);
-    str_ptr->ptr[str_ptr->size++] = val;
-    //fprintf(stderr, "%ld size = %zu cap = %zu\n", str_ptr->ptr[str_ptr->size-1], str_ptr->size, str_ptr->capacity);
-    return 0;
+    str[i] = 0;
 }

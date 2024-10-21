@@ -1,5 +1,6 @@
 #ifndef CMDS_H
 #define CMDS_H
+const int LBL_SIZE = 32;
 enum {
     hlt,
     push,
@@ -8,5 +9,13 @@ enum {
     sub,
     mult,
     divv,
+    jmp,
+    ja,
+    jae,
+    jb,
+    jbe,
+    je,
+    jme,
+    lbl,
 };
 #endif
