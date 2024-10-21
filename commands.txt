@@ -1,0 +1,9 @@
+push 6
+push 3
+div
+out
+push 2
+push 5
+mult
+out
+hlt
