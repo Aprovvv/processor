@@ -2,62 +2,122 @@
 #include <stdlib.h>
 #include <string.h>
 #include "stack/stack.h"
+#include "cmds.h"
+
+struct darr {
+    size_t capacity;
+    size_t size;
+    long* ptr;
+};
+
+struct spu {
+    struct stack_t* stk;
+    int ip;
+    struct darr code;
+};
+
+static int pr (const void* p);
+static int darr_init(struct darr* str_ptr, size_t start_capacity);
+static int darr_add(struct darr* str_ptr, long val);
 
 int main()
 {
-    struct stack_t* stk = stack_init(sizeof(int), 4);
-    while (1)
+    struct spu proc= {};
+    proc.stk = stack_init(sizeof(int), 4);
+    FILE* fp = fopen("cmds.txt", "r");
+    darr_init(&proc.code, 4);
+    int cont = 1;
+    long cmd;
+    while (fscanf(fp, "%ld", &cmd) != EOF)
     {
-        char cmd[20] = "";
-        scanf("%s", cmd);
-        if (strcmp(cmd, "push") == 0)
-        {
-            int arg = 0;
-            scanf("%d", &arg);
-            stack_push(stk, &arg);
-        }
-        else if (strcmp(cmd, "sum") == 0)
-        {
-            int a, b;
-            stack_pop(stk, &a);
-            stack_pop(stk, &b);
-            a = a + b;
-            stack_push(stk, &a);
-        }
-        else if (strcmp(cmd, "sub") == 0)
-        {
-            int a, b;
-            stack_pop(stk, &a);
-            stack_pop(stk, &b);
-            a = b - a;
-            stack_push(stk, &a);
-        }
-        else if (strcmp(cmd, "mult") == 0)
-        {
-            int a, b;
-            stack_pop(stk, &a);
-            stack_pop(stk, &b);
-            a = a*b;
-            stack_push(stk, &a);
-        }
-        else if (strcmp(cmd, "div") == 0)
-        {
-            int a, b;
-            stack_pop(stk, &a);
-            stack_pop(stk, &b);
-            a = b/a;
-            stack_push(stk, &a);
-        }
-        else if(strcmp(cmd, "out") == 0)
-        {
-            int a = 0;
-            stack_pop(stk, &a);
-            printf("%d\n", a);
-        }
-        else if (strcmp(cmd, "hlt") == 0)
-            break;
-        else
-            printf("SNTXERR %s\n", cmd);
+        darr_add(&proc.code, cmd);
     }
-    stack_destroy(stk);
+    for(int i = 0; i < proc.code.capacity; i++)
+    {
+        printf("%ld ", proc.code.ptr[i]);
+    }
+
+    /*while (cont)
+    {
+        long a, b;
+        fscanf(fp, "%ld", &cmd);
+        //stack_printf(stk, pr);
+        switch (cmd)
+        {
+            case push:
+                fscanf(fp, "%ld", &a);
+                stack_push(proc.stk, &a);
+                break;
+            case sum:
+                stack_pop(proc.stk, &a);
+                stack_pop(proc.stk, &b);
+                a = a + b;
+                stack_push(proc.stk, &a);
+                break;
+            case sub:
+                stack_pop(proc.stk, &a);
+                stack_pop(proc.stk, &b);
+                a = b - a;
+                stack_push(proc.stk, &a);
+                break;
+            case mult:
+                stack_pop(proc.stk, &a);
+                stack_pop(proc.stk, &b);
+                a = a*b;
+                stack_push(proc.stk, &a);
+                break;
+            case divv:
+                stack_pop(proc.stk, &a);
+                stack_pop(proc.stk, &b);
+                a = b/a;
+                stack_push(proc.stk, &a);
+                break;
+            case out:
+                stack_pop(proc.stk, &a);
+                printf("%ld\n", a);
+                break;
+            case hlt:
+                cont = false;
+                break;
+            default:
+                fprintf(stderr, "SNTXERR %ld\n", cmd);
+                cont = false;
+                break;
+        }
+    }*/
+    free(proc.code.ptr);
+    stack_destroy(proc.stk);
+}
+
+static int pr (const void* p)
+{
+    const int* pi = (const int*)p;
+    fprintf(stderr, "%d", *pi);
+    return 0;
+}
+
+static int darr_init(struct darr* str_ptr, size_t start_capacity)
+{
+    str_ptr->ptr = (long*)calloc(sizeof(long), start_capacity);
+    if (str_ptr == NULL)
+        return 1;
+    str_ptr->capacity = start_capacity;
+    str_ptr->size = 0;
+    return 0;
+}
+
+static int darr_add(struct darr* str_ptr, long val)
+{
+    if (str_ptr->capacity <= str_ptr->size)
+    {
+        long* temp_ptr = (long*)realloc(str_ptr->ptr, sizeof(long)*str_ptr->capacity*2);
+        if (temp_ptr == NULL)
+            return 1;
+        str_ptr->capacity *= 2;
+        str_ptr->ptr = temp_ptr;
+    }
+    //fprintf(stderr, "size = %zu cap = %zu\n", str_ptr->size, str_ptr->capacity);
+    str_ptr->ptr[str_ptr->size++] = val;
+    //fprintf(stderr, "%ld size = %zu cap = %zu\n", str_ptr->ptr[str_ptr->size-1], str_ptr->size, str_ptr->capacity);
+    return 0;
 }
