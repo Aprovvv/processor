@@ -22,30 +22,32 @@ static int darr_add(struct darr* str_ptr, long val);
 
 int main()
 {
+    long cmd = 0;
+    size_t ip = 0;
+
     struct spu proc= {};
     proc.stk = stack_init(sizeof(int), 4);
     FILE* fp = fopen("cmds.txt", "r");
     darr_init(&proc.code, 4);
-    int cont = 1;
-    long cmd;
     while (fscanf(fp, "%ld", &cmd) != EOF)
     {
         darr_add(&proc.code, cmd);
     }
-    for(int i = 0; i < proc.code.capacity; i++)
+    /*for(size_t i = 0; i < proc.code.capacity; i++)
     {
         printf("%ld ", proc.code.ptr[i]);
-    }
+    }*/
 
-    /*while (cont)
+    for(ip = 0; ip < proc.code.size; ip++)
     {
         long a, b;
-        fscanf(fp, "%ld", &cmd);
+        cmd = proc.code.ptr[ip];
+        //printf("cmd = %ld\n", cmd);
         //stack_printf(stk, pr);
         switch (cmd)
         {
             case push:
-                fscanf(fp, "%ld", &a);
+                a = proc.code.ptr[++ip];
                 stack_push(proc.stk, &a);
                 break;
             case sum:
@@ -77,14 +79,15 @@ int main()
                 printf("%ld\n", a);
                 break;
             case hlt:
-                cont = false;
+                goto stop_reading;
                 break;
             default:
                 fprintf(stderr, "SNTXERR %ld\n", cmd);
-                cont = false;
+                goto stop_reading;
                 break;
         }
-    }*/
+    }
+stop_reading:
     free(proc.code.ptr);
     stack_destroy(proc.stk);
 }
