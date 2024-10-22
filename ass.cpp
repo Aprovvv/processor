@@ -2,132 +2,186 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "stack/stack.h"
 #include "cmds.h"
 
+struct lbl_t {
+    long addr;
+    char name[LBL_SIZE];
+};
+
 static void get_str(FILE* fp, char* str, int size);
+static long search_lbl(FILE* fp, struct stack_t* lbl_stack);
 
 int main()
 {
+    struct stack_t* stk = stack_init(sizeof(long), 4);
+    struct stack_t* lbl_stack = stack_init(sizeof(struct lbl_t), 4);
     FILE* input = fopen("commands.txt", "r");
-    FILE* output = fopen("cmds.txt", "w");
+    FILE* output = fopen("cmds.bin", "wb");
     char cmd[30];
-    long int arg = 0;
+    long arg = 0;
+    size_t ip = -1;
     while(fscanf(input, "%s", cmd) != EOF)
     {
-        printf("%s ", cmd);
+        printf("%s\n", cmd);
+        ip++;
         if (strcmp(cmd, "hlt") == 0)
         {
-            fprintf(output, "%d\n", HLT);
+            arg = HLT;
+            stack_push(stk, &arg);
             continue;
         }
         if (strcmp(cmd, "push") == 0)
         {
-            fprintf(output, "%d\n", PUSH);
+            arg = PUSH;
+            stack_push(stk, &arg);
             fscanf(input, "%ld", &arg);
-            fprintf(output, "%ld\n", arg);
+            stack_push(stk, &arg);
             fscanf(input, "%ld", &arg);
-            fprintf(output, "%ld\n", arg);
+            stack_push(stk, &arg);
+            ip += 2;
             continue;
         }
         if (strcmp(cmd, "pop") == 0)
         {
-            fprintf(output, "%d\n", POP);
+            arg = POP;
+            stack_push(stk, &arg);
             fscanf(input, "%ld", &arg);
-            fprintf(output, "%ld\n", arg);
+            stack_push(stk, &arg);
+            ip++;
             continue;
         }
         if (strcmp(cmd, "out") == 0)
         {
-            fprintf(output, "%d\n", OUT);
+            arg = OUT;
+            stack_push(stk, &arg);
             continue;
         }
         if (strcmp(cmd, "sum") == 0)
         {
-            fprintf(output, "%d\n", SUM);
+            arg = SUM;
+            stack_push(stk, &arg);
             continue;
         }
         if (strcmp(cmd, "sub") == 0)
         {
-            fprintf(output, "%d\n", SUB);
+            arg = SUB;
+            stack_push(stk, &arg);
             continue;
         }
         if (strcmp(cmd, "mult") == 0)
         {
-            fprintf(output, "%d\n", MULT);
+            arg = MULT;
+            stack_push(stk, &arg);
             continue;
         }
         if (strcmp(cmd, "div") == 0)
         {
-            fprintf(output, "%d\n", DIV);
+            arg = DIV;
+            stack_push(stk, &arg);
             continue;
         }
         if (strcmp(cmd, "jmp") == 0)
         {
-            fprintf(output, "%d ", JMP);
-            char lbl_name[LBL_SIZE] = "";
-            get_str(input, lbl_name, LBL_SIZE);
-            fprintf(output, "%s\n", lbl_name);
+            arg = JMP;
+            stack_push(stk, &arg);
+            long addr = search_lbl(input, lbl_stack);
+            stack_push(stk, &addr);
+            ip++;
             continue;
         }
         if (strcmp(cmd, "ja") == 0)
         {
-            fprintf(output, "%d\n", JA);
-            char lbl_name[LBL_SIZE] = "";
-            get_str(input, lbl_name, LBL_SIZE);
-            fprintf(output, "%s\n", lbl_name);
+            arg = JA;
+            stack_push(stk, &arg);
+            long addr = search_lbl(input, lbl_stack);
+            stack_push(stk, &addr);
+            ip++;
             continue;
         }
         if (strcmp(cmd, "jae") == 0)
         {
-            fprintf(output, "%d\n", JAE);
-            char lbl_name[LBL_SIZE] = "";
-            get_str(input, lbl_name, LBL_SIZE);
-            fprintf(output, "%s\n", lbl_name);
+            arg = JAE;
+            stack_push(stk, &arg);
+            long addr = search_lbl(input, lbl_stack);
+            stack_push(stk, &addr);
+            ip++;
             continue;
         }
         if (strcmp(cmd, "jb") == 0)
         {
-            fprintf(output, "%d ", JB);
-            char lbl_name[LBL_SIZE] = "";
-            get_str(input, lbl_name, LBL_SIZE);
-            fprintf(output, "%s\n", lbl_name);
+            arg = JB;
+            stack_push(stk, &arg);
+            long addr = search_lbl(input, lbl_stack);
+            stack_push(stk, &addr);
+            ip++;
             continue;
         }
         if (strcmp(cmd, "jbe") == 0)
         {
-            fprintf(output, "%d\n", JBE);
-            char lbl_name[LBL_SIZE] = "";
-            get_str(input, lbl_name, LBL_SIZE);
-            fprintf(output, "%s\n", lbl_name);
+            arg = JBE;
+            stack_push(stk, &arg);
+            long addr = search_lbl(input, lbl_stack);
+            stack_push(stk, &addr);
+            ip++;
             continue;
         }
         if (strcmp(cmd, "je") == 0)
         {
-            fprintf(output, "%d\n", JE);
-            char lbl_name[LBL_SIZE] = "";
-            get_str(input, lbl_name, LBL_SIZE);
-            fprintf(output, "%s\n", lbl_name);
+            arg = JE;
+            stack_push(stk, &arg);
+            long addr = search_lbl(input, lbl_stack);
+            stack_push(stk, &addr);
+            ip++;
             continue;
         }
         if (strcmp(cmd, "jme") == 0)
         {
-            fprintf(output, "%d\n", JME);
-            char lbl_name[LBL_SIZE] = "";
-            get_str(input, lbl_name, LBL_SIZE);
-            fprintf(output, "%s\n", lbl_name);
+            arg = JME;
+            stack_push(stk, &arg);
+            long addr = search_lbl(input, lbl_stack);
+            stack_push(stk, &addr);
+            ip++;
             continue;
         }
         if (strcmp(cmd, "lbl") == 0)
         {
-            char lbl_name[LBL_SIZE] = "";
-            get_str(input, lbl_name, LBL_SIZE);
-            fprintf(output, "%d\n%s\n", LBL, lbl_name);
+            arg = LBL;
+            stack_push(stk, &arg);
+            struct lbl_t l = {};
+            get_str(input, l.name, LBL_SIZE);
+            l.addr = (long)ip;
+            stack_push(lbl_stack, &l);
+            fprintf(stderr, "l.name = %s; l.addr = %d\n", l.name, l.addr);
             continue;
         }
         fprintf(stderr, "SNTXERR: %s\n", cmd);
     }
+    fwrite(stack_data(stk), sizeof(long), stack_size(stk), output);
+    stack_destroy(stk);
+    stack_destroy(lbl_stack);
     fclose(input);
     fclose(output);
+}
+
+static long search_lbl(FILE* fp, struct stack_t* lbl_stack)
+{
+    char name[LBL_SIZE] = "";
+    struct lbl_t l = {};
+    get_str(fp, name, LBL_SIZE);
+    fprintf(stderr, "name = %s\n", name);
+    for (size_t i = 0; i < stack_size(lbl_stack); i++)
+    {
+        stack_view(lbl_stack, i, &l);
+        if (strcmp(name, l.name) == 0)
+        {
+            fprintf(stderr, "addr = %ld\n", l.addr);
+            return l.addr;
+        }
+    }
+    fprintf(stderr, "UNDEFINED LABEL %s\n", name);
+    abort();
 }
 
 static void get_str(FILE* fp, char* str, int size)

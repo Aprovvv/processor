@@ -1,6 +1,6 @@
 #ifndef CMDS_H
 #define CMDS_H
-const int LBL_SIZE = 32;
+const int LBL_SIZE = 8;
 enum cmds {
     HLT,
     PUSH,
