@@ -1,3 +1,11 @@
 *.o
-release_object_files/
+*.txt
+*.bin
+*.out
+open
+ass
+debug
+vscode/
+ass_object_files/
 debug_object_files/
+release_object_files/
