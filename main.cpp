@@ -15,6 +15,7 @@ struct spu {
     int ip;
     struct stack_t* code;
     struct stack_t* lbl_stack;
+    long reg[16];
 };
 
 static int pr (const void* p);
@@ -24,102 +25,225 @@ int main()
 {
     long cmd = 0;
     size_t ip = 0;
-
     struct spu proc= {};
-    proc.stk = stack_init(sizeof(int), 4);
-    proc.code = stack_init(sizeof(int), 4);
+    stderr = fopen("log.txt", "w");
+
+    proc.stk = stack_init(sizeof(long), 4);
+    proc.code = stack_init(sizeof(long), 4);
     proc.lbl_stack = stack_init(sizeof(struct lbl_t), 4);
     FILE* fp = fopen("cmds.txt", "r");
+
     while (fscanf(fp, "%ld", &cmd) != EOF)
     {
-        printf("cmd = %d\n", cmd);
+        //printf("cmd = %ld\n", cmd);
         stack_push(proc.code, &cmd);
-        if (cmd == lbl)
+        switch(cmd)
         {
-            struct lbl_t l = {};
-            get_str(fp, l.name, LBL_SIZE);
-            l.addr = (long)ip;
-            stack_push(proc.lbl_stack, &l);
-        }
-        else if (cmd == jmp)
-        {
-            char name[LBL_SIZE] = "";
-            struct lbl_t l = {};
-            get_str(fp, name, LBL_SIZE);
-            printf("name = %s\n", name);
-            for (size_t i = 0; i < stack_size(proc.lbl_stack); i++)
+            case PUSH:
             {
-                stack_view(proc.lbl_stack, i, &l);
-                if (strcmp(name, l.name) == 0)
-                {
-                    stack_push(proc.code, &l.addr);
-                    ip++;
-                    break;
-                }
+                fscanf(fp, "%ld", &cmd);
+                stack_push(proc.code, &cmd);
+                fscanf(fp, "%ld", &cmd);
+                stack_push(proc.code, &cmd);
+                ip += 2;
+                break;
             }
+            case LBL:
+            {
+                struct lbl_t l = {};
+                get_str(fp, l.name, LBL_SIZE);
+                //ip++;
+                l.addr = (long)ip;
+                stack_push(proc.lbl_stack, &l);
+                fprintf(stderr, "l.name = %s; l.addr = %d\n", l.name, l.addr);
+                break;
+            }
+            case JMP:
+            case JA:
+            case JAE:
+            case JB:
+            case JBE:
+            case JE:
+            case JME:
+            {
+                char name[LBL_SIZE] = "";
+                struct lbl_t l = {};
+                get_str(fp, name, LBL_SIZE);
+                fprintf(stderr, "name = %s\n", name);
+                for (size_t i = 0; i < stack_size(proc.lbl_stack); i++)
+                {
+                    stack_view(proc.lbl_stack, i, &l);
+                    if (strcmp(name, l.name) == 0)
+                    {
+                        stack_push(proc.code, &l.addr);
+                        ip++;
+                        break;
+                    }
+                }
+                fprintf(stderr, "addr = %ld\n", l.addr);
+                break;
+            }
+            default:
+                break;
         }
         ip++;
     }
     ip = 0;
+
     for(size_t i = 0; i < stack_size(proc.code); i++)
     {
         long x;
         stack_view(proc.code, i, &x);
-        printf("%ld ", x);
+        fprintf(stderr, "%ld ", x);
     }
-    putchar('\n');
+    fputc('\n', stderr);
 
     for(ip = 0; ip < stack_size(proc.code); ip++)
     {
         long a, b;
         stack_view(proc.code, ip, &cmd);
-        //printf("cmd = %ld\n", cmd);
+        //fprintf(stderr, "cmd = %ld\n", cmd);
         //stack_printf(proc.stk, pr);
         switch (cmd)
         {
-            case push:
+            case PUSH:
+            {
+                long dest = 0;
+                stack_view(proc.code, ++ip, &dest);
                 stack_view(proc.code, ++ip, &a);
-                //printf("a = %ld\n", a);
-                stack_push(proc.stk, &a);
+                if (dest & 1)
+                    stack_push(proc.stk, &a);
+                if (dest & 2)
+                    stack_push(proc.stk, &proc.reg[a]);
+                //stack_printf(proc.stk, pr);
                 break;
-            case sum:
+            }
+            case POP:
+            {
+                //stack_printf(proc.stk, pr);
+                long dest = 0;
+                stack_view(proc.code, ++ip, &dest);
+                stack_pop(proc.stk, &proc.reg[dest]);
+                //stack_printf(proc.stk, pr);
+                //fprintf(stderr, "dest = %d, reg[%d] = %ld\n", dest, dest, proc.reg[dest]);
+                break;
+            }
+            case SUM:
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
-                a = a + b;
+                a = b + a;
                 stack_push(proc.stk, &a);
                 break;
-            case sub:
+            case SUB:
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
                 a = b - a;
                 stack_push(proc.stk, &a);
                 break;
-            case mult:
+            case MULT:
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
-                a = a*b;
+                a = b*a;
                 stack_push(proc.stk, &a);
                 break;
-            case divv:
+            case DIV:
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
                 a = b/a;
                 stack_push(proc.stk, &a);
                 break;
-            case out:
+            case OUT:
                 stack_pop(proc.stk, &a);
-                printf("%ld\n", a);
+                fprintf(stderr, "%ld\n", a);
                 break;
-            case hlt:
+            case HLT:
                 goto stop_reading;
                 break;
-            case lbl:
+            case LBL:
                 break;
-            case jmp:
+            case JMP:
             {
                 long addr = (long)++ip;
                 stack_view(proc.code, ip, &addr);
                 ip = (size_t)addr;
+                //abort();
+                break;
+            }
+            case JA:
+            {
+                //stack_printf(proc.stk, pr);
+                stack_pop(proc.stk, &a);
+                stack_pop(proc.stk, &b);
+                long addr = (long)++ip;
+                stack_view(proc.code, ip, &addr);
+                //fprintf(stderr, "a = %ld, b = %ld, addr = %ld, reg[0] = %ld\n", a, b, addr, proc.reg[0]);
+                if (b > a)
+                    ip = (size_t)addr;
+                //abort();
+                break;
+            }
+            case JAE:
+            {
+                //stack_printf(proc.stk, pr);
+                stack_pop(proc.stk, &a);
+                stack_pop(proc.stk, &b);
+                long addr = (long)++ip;
+                stack_view(proc.code, ip, &addr);
+                //fprintf(stderr, "a = %ld, b = %ld, addr = %ld, reg[0] = %ld\n", a, b, addr, proc.reg[0]);
+                if (b >= a)
+                    ip = (size_t)addr;
+                //abort();
+                break;
+            }
+            case JB:
+            {
+                //stack_printf(proc.stk, pr);
+                stack_pop(proc.stk, &a);
+                stack_pop(proc.stk, &b);
+                long addr = (long)++ip;
+                stack_view(proc.code, ip, &addr);
+                //fprintf(stderr, "a = %ld, b = %ld, addr = %ld, reg[0] = %ld\n", a, b, addr, proc.reg[0]);
+                if (b < a)
+                    ip = (size_t)addr;
+                //abort();
+                break;
+            }
+            case JBE:
+            {
+                //stack_printf(proc.stk, pr);
+                stack_pop(proc.stk, &a);
+                stack_pop(proc.stk, &b);
+                long addr = (long)++ip;
+                stack_view(proc.code, ip, &addr);
+                //fprintf(stderr, "a = %ld, b = %ld, addr = %ld, reg[0] = %ld\n", a, b, addr, proc.reg[0]);
+                if (b <= a)
+                    ip = (size_t)addr;
+                //abort();
+                break;
+            }
+            case JE:
+            {
+                //stack_printf(proc.stk, pr);
+                stack_pop(proc.stk, &a);
+                stack_pop(proc.stk, &b);
+                long addr = (long)++ip;
+                stack_view(proc.code, ip, &addr);
+                //fprintf(stderr, "a = %ld, b = %ld, addr = %ld, reg[0] = %ld\n", a, b, addr, proc.reg[0]);
+                if (b == a)
+                    ip = (size_t)addr;
+                //abort();
+                break;
+            }
+            case JME:
+            {
+                //stack_printf(proc.stk, pr);
+                stack_pop(proc.stk, &a);
+                stack_pop(proc.stk, &b);
+                long addr = (long)++ip;
+                stack_view(proc.code, ip, &addr);
+                //fprintf(stderr, "a = %ld, b = %ld, addr = %ld, reg[0] = %ld\n", a, b, addr, proc.reg[0]);
+                if (b != a)
+                    ip = (size_t)addr;
                 //abort();
                 break;
             }

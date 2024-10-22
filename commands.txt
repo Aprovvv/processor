@@ -1,6 +1,15 @@
-push 12
-lbl l0
-push 1488
+push 01 00
+pop 00
+lbl next
+push 02 00
+push 02 00
+mult
 out
-jmp l0
+push 02 00
+push 1
+sum
+pop 00
+push 01 8
+push 02 00
+jme next
 hlt

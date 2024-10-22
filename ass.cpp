@@ -16,51 +16,115 @@ int main()
     {
         printf("%s ", cmd);
         if (strcmp(cmd, "hlt") == 0)
-            fprintf(output, "%d\n", hlt);
-        else if (strcmp(cmd, "push") == 0)
         {
-            fprintf(output, "%d\n", push);
+            fprintf(output, "%d\n", HLT);
+            continue;
+        }
+        if (strcmp(cmd, "push") == 0)
+        {
+            fprintf(output, "%d\n", PUSH);
             fscanf(input, "%ld", &arg);
             fprintf(output, "%ld\n", arg);
+            fscanf(input, "%ld", &arg);
+            fprintf(output, "%ld\n", arg);
+            continue;
         }
-        else if (strcmp(cmd, "out") == 0)
-            fprintf(output, "%d\n", out);
-        else if (strcmp(cmd, "sum") == 0)
-            fprintf(output, "%d\n", sum);
-        else if (strcmp(cmd, "sub") == 0)
-            fprintf(output, "%d\n", sub);
-        else if (strcmp(cmd, "mult") == 0)
-            fprintf(output, "%d\n", divv);
-        else if (strcmp(cmd, "div") == 0)
-            fprintf(output, "%d\n", mult);
-        else if (strcmp(cmd, "jmp") == 0)
+        if (strcmp(cmd, "pop") == 0)
         {
-            fprintf(output, "%d ", jmp);
+            fprintf(output, "%d\n", POP);
+            fscanf(input, "%ld", &arg);
+            fprintf(output, "%ld\n", arg);
+            continue;
+        }
+        if (strcmp(cmd, "out") == 0)
+        {
+            fprintf(output, "%d\n", OUT);
+            continue;
+        }
+        if (strcmp(cmd, "sum") == 0)
+        {
+            fprintf(output, "%d\n", SUM);
+            continue;
+        }
+        if (strcmp(cmd, "sub") == 0)
+        {
+            fprintf(output, "%d\n", SUB);
+            continue;
+        }
+        if (strcmp(cmd, "mult") == 0)
+        {
+            fprintf(output, "%d\n", MULT);
+            continue;
+        }
+        if (strcmp(cmd, "div") == 0)
+        {
+            fprintf(output, "%d\n", DIV);
+            continue;
+        }
+        if (strcmp(cmd, "jmp") == 0)
+        {
+            fprintf(output, "%d ", JMP);
             char lbl_name[LBL_SIZE] = "";
             get_str(input, lbl_name, LBL_SIZE);
             fprintf(output, "%s\n", lbl_name);
             continue;
         }
-        else if (strcmp(cmd, "ja") == 0)
-            fprintf(output, "%d\n", ja);
-        else if (strcmp(cmd, "jae") == 0)
-            fprintf(output, "%d\n", jae);
-        else if (strcmp(cmd, "jb") == 0)
-            fprintf(output, "%d\n", jb);
-        else if (strcmp(cmd, "jbe") == 0)
-            fprintf(output, "%d\n", jbe);
-        else if (strcmp(cmd, "je") == 0)
-            fprintf(output, "%d\n", je);
-        else if (strcmp(cmd, "jme") == 0)
-            fprintf(output, "%d\n", jme);
-        else if (strcmp(cmd, "lbl") == 0)
+        if (strcmp(cmd, "ja") == 0)
+        {
+            fprintf(output, "%d\n", JA);
+            char lbl_name[LBL_SIZE] = "";
+            get_str(input, lbl_name, LBL_SIZE);
+            fprintf(output, "%s\n", lbl_name);
+            continue;
+        }
+        if (strcmp(cmd, "jae") == 0)
+        {
+            fprintf(output, "%d\n", JAE);
+            char lbl_name[LBL_SIZE] = "";
+            get_str(input, lbl_name, LBL_SIZE);
+            fprintf(output, "%s\n", lbl_name);
+            continue;
+        }
+        if (strcmp(cmd, "jb") == 0)
+        {
+            fprintf(output, "%d ", JB);
+            char lbl_name[LBL_SIZE] = "";
+            get_str(input, lbl_name, LBL_SIZE);
+            fprintf(output, "%s\n", lbl_name);
+            continue;
+        }
+        if (strcmp(cmd, "jbe") == 0)
+        {
+            fprintf(output, "%d\n", JBE);
+            char lbl_name[LBL_SIZE] = "";
+            get_str(input, lbl_name, LBL_SIZE);
+            fprintf(output, "%s\n", lbl_name);
+            continue;
+        }
+        if (strcmp(cmd, "je") == 0)
+        {
+            fprintf(output, "%d\n", JE);
+            char lbl_name[LBL_SIZE] = "";
+            get_str(input, lbl_name, LBL_SIZE);
+            fprintf(output, "%s\n", lbl_name);
+            continue;
+        }
+        if (strcmp(cmd, "jme") == 0)
+        {
+            fprintf(output, "%d\n", JME);
+            char lbl_name[LBL_SIZE] = "";
+            get_str(input, lbl_name, LBL_SIZE);
+            fprintf(output, "%s\n", lbl_name);
+            continue;
+        }
+        if (strcmp(cmd, "lbl") == 0)
         {
             char lbl_name[LBL_SIZE] = "";
             get_str(input, lbl_name, LBL_SIZE);
-            fprintf(output, "%d\n%s\n", lbl, lbl_name);
+            fprintf(output, "%d\n%s\n", LBL, lbl_name);
             continue;
         }
-        //printf("%ld\n", code);
+        fprintf(stderr, "SNTXERR: %s\n", cmd);
     }
     fclose(input);
     fclose(output);
