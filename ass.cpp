@@ -6,21 +6,23 @@
 #include "cmds.h"
 
 struct lbl_t {
-    long addr;
+    proc_elem_t addr;
     char name[LBL_SIZE];
 };
 
 static void get_str(FILE* fp, char* str, int size);
-static long search_lbl(FILE* fp, struct stack_t* lbl_stack);
+static proc_elem_t search_lbl(FILE* fp, struct stack_t* lbl_stack);
+static void push_args(struct stack_t* stk, FILE* input, size_t* ip);
+static void pop_args(struct stack_t* stk, FILE* input, size_t* ip);
 
 int main()
 {
-    struct stack_t* stk = stack_init(sizeof(long), 4);
+    struct stack_t* stk = stack_init(sizeof(proc_elem_t), 4);
     struct stack_t* lbl_stack = stack_init(sizeof(struct lbl_t), 4);
     FILE* input = fopen("commands.txt", "r");
     FILE* output = fopen("cmds.bin", "wb");
-    char cmd[30];
-    long arg = 0;
+    char cmd[CMD_SIZE];
+    proc_elem_t arg = 0;
     size_t ip = -1;
     while(fscanf(input, "%s", cmd) != EOF)
     {
@@ -36,20 +38,14 @@ int main()
         {
             arg = PUSH;
             stack_push(stk, &arg);
-            fscanf(input, "%ld", &arg);
-            stack_push(stk, &arg);
-            fscanf(input, "%ld", &arg);
-            stack_push(stk, &arg);
-            ip += 2;
+            push_args(stk, input, &ip);
             continue;
         }
         if (strcmp(cmd, "pop") == 0)
         {
             arg = POP;
             stack_push(stk, &arg);
-            fscanf(input, "%ld", &arg);
-            stack_push(stk, &arg);
-            ip++;
+            pop_args(stk, input, &ip);
             continue;
         }
         if (strcmp(cmd, "out") == 0)
@@ -86,7 +82,7 @@ int main()
         {
             arg = JMP;
             stack_push(stk, &arg);
-            long addr = search_lbl(input, lbl_stack);
+            proc_elem_t addr = search_lbl(input, lbl_stack);
             stack_push(stk, &addr);
             ip++;
             continue;
@@ -95,7 +91,7 @@ int main()
         {
             arg = JA;
             stack_push(stk, &arg);
-            long addr = search_lbl(input, lbl_stack);
+            proc_elem_t addr = search_lbl(input, lbl_stack);
             stack_push(stk, &addr);
             ip++;
             continue;
@@ -104,7 +100,7 @@ int main()
         {
             arg = JAE;
             stack_push(stk, &arg);
-            long addr = search_lbl(input, lbl_stack);
+            proc_elem_t addr = search_lbl(input, lbl_stack);
             stack_push(stk, &addr);
             ip++;
             continue;
@@ -113,7 +109,7 @@ int main()
         {
             arg = JB;
             stack_push(stk, &arg);
-            long addr = search_lbl(input, lbl_stack);
+            proc_elem_t addr = search_lbl(input, lbl_stack);
             stack_push(stk, &addr);
             ip++;
             continue;
@@ -122,7 +118,7 @@ int main()
         {
             arg = JBE;
             stack_push(stk, &arg);
-            long addr = search_lbl(input, lbl_stack);
+            proc_elem_t addr = search_lbl(input, lbl_stack);
             stack_push(stk, &addr);
             ip++;
             continue;
@@ -131,7 +127,7 @@ int main()
         {
             arg = JE;
             stack_push(stk, &arg);
-            long addr = search_lbl(input, lbl_stack);
+            proc_elem_t addr = search_lbl(input, lbl_stack);
             stack_push(stk, &addr);
             ip++;
             continue;
@@ -140,7 +136,7 @@ int main()
         {
             arg = JME;
             stack_push(stk, &arg);
-            long addr = search_lbl(input, lbl_stack);
+            proc_elem_t addr = search_lbl(input, lbl_stack);
             stack_push(stk, &addr);
             ip++;
             continue;
@@ -151,21 +147,120 @@ int main()
             stack_push(stk, &arg);
             struct lbl_t l = {};
             get_str(input, l.name, LBL_SIZE);
-            l.addr = (long)ip;
+            l.addr = (proc_elem_t)ip;
             stack_push(lbl_stack, &l);
-            fprintf(stderr, "l.name = %s; l.addr = %d\n", l.name, l.addr);
+            fprintf(stderr, "l.name = %s; l.addr = %ld\n", l.name, l.addr);
             continue;
         }
         fprintf(stderr, "SNTXERR: %s\n", cmd);
     }
-    fwrite(stack_data(stk), sizeof(long), stack_size(stk), output);
+    fwrite(stack_data(stk), sizeof(proc_elem_t), stack_size(stk), output);
     stack_destroy(stk);
     stack_destroy(lbl_stack);
     fclose(input);
     fclose(output);
 }
 
-static long search_lbl(FILE* fp, struct stack_t* lbl_stack)
+static void push_args(struct stack_t* stk, FILE* input, size_t* ip)
+{
+    char arg[CMD_SIZE] = "";
+    proc_elem_t a = 0;
+    get_str(input, arg, CMD_SIZE);
+    printf("!!! arg = %s\n", arg);
+    if (strchr(arg, '[') == NULL)
+    {
+        (*ip)+=2;
+        if(strcmp(arg, "ax") == 0)
+        {
+            a = pushr;
+            stack_push(stk, &a);
+            a = ax;
+            stack_push(stk, &a);
+            return;
+        }
+        if(strcmp(arg, "bx") == 0)
+        {
+            a = pushr;
+            stack_push(stk, &a);
+            a = bx;
+            stack_push(stk, &a);
+            return;
+        }
+        if(strcmp(arg, "cx") == 0)
+        {
+            a = pushr;
+            stack_push(stk, &a);
+            a = cx;
+            stack_push(stk, &a);
+            return;
+        }
+        if(strcmp(arg, "dx") == 0)
+        {
+            a = pushr;
+            stack_push(stk, &a);
+            a = dx;
+            stack_push(stk, &a);
+            return;
+        }
+        if(sscanf(arg, "%ld", &a) == 1)
+        {
+            proc_elem_t b = push;
+            stack_push(stk, &b);
+            stack_push(stk, &a);
+            return;
+        }
+        fprintf(stderr, "SNTXERR: undefined argument %s\n", arg);
+        abort();
+    }
+}
+
+static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
+{
+    char arg[CMD_SIZE] = "";
+    proc_elem_t a = 0;
+    get_str(input, arg, CMD_SIZE);
+    printf("!!! arg = %s\n", arg);
+    if (strchr(arg, '[') == NULL)
+    {
+        (*ip)+=2;
+        if(strcmp(arg, "ax") == 0)
+        {
+            a = pushr;
+            stack_push(stk, &a);
+            a = ax;
+            stack_push(stk, &a);
+            return;
+        }
+        if(strcmp(arg, "bx") == 0)
+        {
+            a = pushr;
+            stack_push(stk, &a);
+            a = bx;
+            stack_push(stk, &a);
+            return;
+        }
+        if(strcmp(arg, "cx") == 0)
+        {
+            a = pushr;
+            stack_push(stk, &a);
+            a = cx;
+            stack_push(stk, &a);
+            return;
+        }
+        if(strcmp(arg, "dx") == 0)
+        {
+            a = pushr;
+            stack_push(stk, &a);
+            a = dx;
+            stack_push(stk, &a);
+            return;
+        }
+        fprintf(stderr, "SNTXERR: undefined argument %s\n", arg);
+        abort();
+    }
+}
+
+static proc_elem_t search_lbl(FILE* fp, struct stack_t* lbl_stack)
 {
     char name[LBL_SIZE] = "";
     struct lbl_t l = {};

@@ -1,6 +1,8 @@
 #ifndef CMDS_H
 #define CMDS_H
-const int LBL_SIZE = 8;
+typedef long proc_elem_t;
+const int LBL_SIZE = 32;
+const int CMD_SIZE = 32;
 enum cmds {
     HLT,
     PUSH,
@@ -22,7 +24,13 @@ enum cmds {
 enum dests {
     push = 1,
     pushr = 2,
-    pushm = 3,
-    pushmr = 7,
+    pushm = 4,
+    pushmr = 8,
+};
+enum reg_names {
+    ax,
+    bx,
+    cx,
+    dx,
 };
 #endif

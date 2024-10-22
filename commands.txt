@@ -1,15 +1,15 @@
-push 01 00
-pop 00
+push 0
+pop ax
 lbl next
-push 02 00
-push 02 00
+push ax
+push ax
 mult
 out
-push 02 00
+push ax
 push 1
 sum
-pop 00
-push 01 8
-push 02 00
+pop ax
+push 8
+push ax
 jme next
 hlt

@@ -9,9 +9,9 @@
 struct spu {
     struct stack_t* stk;
     int ip;
-    long* code;
+    proc_elem_t* code;
     size_t code_size;
-    long reg[16];
+    proc_elem_t reg[4];
 };
 
 static int pr (const void* p);
@@ -19,7 +19,7 @@ static void dump(FILE* fp, const struct spu* proc, size_t ip);
 
 int main()
 {
-    long cmd = 0;
+    proc_elem_t cmd = 0;
     size_t ip = 0;
     struct spu proc= {};
     struct stat filedata = {};
@@ -27,10 +27,10 @@ int main()
 
     FILE* fp = fopen("cmds.bin", "rb");
     stat("cmds.bin", &filedata);
-    proc.code = (long*)calloc(sizeof(long), (size_t)filedata.st_size);
-    proc.code_size = (size_t)filedata.st_size/sizeof(long);
+    proc.code = (proc_elem_t*)calloc(sizeof(proc_elem_t), (size_t)filedata.st_size);
+    proc.code_size = (size_t)filedata.st_size/sizeof(proc_elem_t);
     fread(proc.code, 1, (size_t)filedata.st_size, fp);
-    proc.stk = stack_init(sizeof(long), 4);
+    proc.stk = stack_init(sizeof(proc_elem_t), 4);
 
     for(size_t i = 0; i < proc.code_size; i++)
     {
@@ -41,13 +41,13 @@ int main()
     for(ip = 0; ip < proc.code_size; ip++)
     {
         //dump(stderr, &proc, ip);
-        long a, b;
+        proc_elem_t a, b;
         cmd = proc.code[ip];
         switch (cmd)
         {
             case PUSH:
             {
-                long dest = proc.code[++ip];
+                proc_elem_t dest = proc.code[++ip];
                 a = proc.code[++ip];
                 if (dest & 1)
                     stack_push(proc.stk, &a);
@@ -57,7 +57,9 @@ int main()
             }
             case POP:
             {
-                long dest = proc.code[++ip];
+                ip++;
+                proc_elem_t dest = proc.code[++ip];
+                //fprintf(stderr, "dest = %d\n", dest);
                 stack_pop(proc.stk, &proc.reg[dest]);
                 break;
             }
@@ -96,7 +98,7 @@ int main()
                 break;
             case JMP:
             {
-                long addr = proc.code[++ip];
+                proc_elem_t addr = proc.code[++ip];
                 ip = (size_t)addr;
                 //abort();
                 break;
@@ -105,7 +107,7 @@ int main()
             {
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
-                long addr = proc.code[++ip];
+                proc_elem_t addr = proc.code[++ip];
                 if (b > a)
                     ip = (size_t)addr;
                 break;
@@ -114,7 +116,7 @@ int main()
             {
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
-                long addr = proc.code[++ip];
+                proc_elem_t addr = proc.code[++ip];
                 if (b >= a)
                     ip = (size_t)addr;
                 break;
@@ -123,7 +125,7 @@ int main()
             {
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
-                long addr = proc.code[++ip];
+                proc_elem_t addr = proc.code[++ip];
                 if (b < a)
                     ip = (size_t)addr;
                 break;
@@ -132,7 +134,7 @@ int main()
             {
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
-                long addr = proc.code[++ip];
+                proc_elem_t addr = proc.code[++ip];
                 if (b <= a)
                     ip = (size_t)addr;
                 break;
@@ -141,7 +143,7 @@ int main()
             {
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
-                long addr = proc.code[++ip];
+                proc_elem_t addr = proc.code[++ip];
                 if (b == a)
                     ip = (size_t)addr;
                 break;
@@ -150,7 +152,7 @@ int main()
             {
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
-                long addr = proc.code[++ip];
+                proc_elem_t addr = proc.code[++ip];
                 if (b != a)
                     ip = (size_t)addr;
                 break;
@@ -186,7 +188,7 @@ static void dump(FILE* fp, const struct spu* proc, size_t ip)
 
 static int pr (const void* p)
 {
-    const long* pi = (const long*)p;
+    const proc_elem_t* pi = (const proc_elem_t*)p;
     fprintf(stderr, "%ld", *pi);
     return 0;
 }
