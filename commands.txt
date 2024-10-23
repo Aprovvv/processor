@@ -1,1 +1,15 @@
-push [ax / 1]
+push 0
+pop ax
+lbl next
+push ax
+push ax
+mult
+out
+push ax
+push 1
+sum
+pop ax
+push 8
+push ax
+jme next
+hlt

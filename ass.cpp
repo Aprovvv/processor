@@ -250,23 +250,33 @@ static void push_args(struct stack_t* stk, FILE* input, size_t* ip)
 static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
 {
     char arg[CMD_SIZE] = "";
+    char new_arg[CMD_SIZE] = "";
     proc_elem_t arg_num = 0, type = 0;
     //get_str(input, arg, CMD_SIZE);
     fscanf(input, "%s", arg);
+    memcpy(new_arg, arg, CMD_SIZE);
     printf("!!! arg = %s\n", arg);
-    if (strchr(arg, '[') == NULL)
+    if ((strchr(arg, '[') == NULL) != (strchr(arg, ']') == NULL))
     {
-        (*ip)+=2;
-        if ((arg_num = reg_name(arg)) >= 0)
-        {
-            type = mask_reg;
-            stack_push(stk, &type);
-            stack_push(stk, &arg_num);
-            return;
-        }
-        fprintf(stderr, "SNTXERR: undefined argument %s\n", arg);
+        fprintf(stderr, "ONLY ONE BRACKET FOUND IN %s\n", arg);
         abort();
     }
+    if (strchr(arg, '[') != NULL && strchr(arg, ']') != NULL)
+    {
+        type += mask_mem;
+        sscanf(arg, "[%s]", new_arg);
+    }
+    (*ip)+=2;
+    fprintf(stderr, "new_arg = %s\n", new_arg);
+    if ((arg_num = reg_name(new_arg)) >= 0)
+    {
+        type += mask_reg;
+        stack_push(stk, &type);
+        stack_push(stk, &arg_num);
+        return;
+    }
+    fprintf(stderr, "SNTXERR: undefined argument %s\n", arg);
+    abort();
 }
 
 static proc_elem_t reg_name(char arg[CMD_SIZE])
