@@ -14,6 +14,7 @@ static void get_str(FILE* fp, char* str, int size);
 static proc_elem_t search_lbl(FILE* fp, struct stack_t* lbl_stack);
 static void push_args(struct stack_t* stk, FILE* input, size_t* ip);
 static void pop_args(struct stack_t* stk, FILE* input, size_t* ip);
+static proc_elem_t reg_name(char arg[CMD_SIZE]);
 
 int main()
 {
@@ -164,52 +165,78 @@ int main()
 static void push_args(struct stack_t* stk, FILE* input, size_t* ip)
 {
     char arg[CMD_SIZE] = "";
-    proc_elem_t a = 0;
+    proc_elem_t type = 0;
+    proc_elem_t arg1 = 0;
+    proc_elem_t arg2_num = 0;
+    char arg2[CMD_SIZE] = "";
     get_str(input, arg, CMD_SIZE);
     printf("!!! arg = %s\n", arg);
     if (strchr(arg, '[') == NULL)
     {
         (*ip)+=2;
-        if(strcmp(arg, "ax") == 0)
+        int sign  = sscanf(arg, "%ld + %s", &arg1, arg2);
+        if (sign == 2)
         {
-            a = pushr;
-            stack_push(stk, &a);
-            a = ax;
-            stack_push(stk, &a);
+            type = mask_numb + mask_reg + mask_plus;
+            stack_push(stk, &type);
+            stack_push(stk, &arg1);
+            arg2_num = reg_name(arg2);
+            stack_push(stk, &arg2_num);
+            ip++;
             return;
         }
-        if(strcmp(arg, "bx") == 0)
+        sign = sscanf(arg, "%ld - %s", &arg1, arg2);
+        if (sign == 2)
         {
-            a = pushr;
-            stack_push(stk, &a);
-            a = bx;
-            stack_push(stk, &a);
+            type = mask_numb + mask_reg + mask_minus;
+            stack_push(stk, &type);
+            stack_push(stk, &arg1);
+            arg2_num = reg_name(arg2);
+            stack_push(stk, &arg2_num);
+            ip++;
             return;
         }
-        if(strcmp(arg, "cx") == 0)
+        sign = sscanf(arg, "%ld * %s", &arg1, arg2);
+        if (sign == 2)
         {
-            a = pushr;
-            stack_push(stk, &a);
-            a = cx;
-            stack_push(stk, &a);
+            type = mask_numb + mask_reg + mask_star;
+            stack_push(stk, &type);
+            stack_push(stk, &arg1);
+            arg2_num = reg_name(arg2);
+            stack_push(stk, &arg2_num);
+            ip++;
             return;
         }
-        if(strcmp(arg, "dx") == 0)
+        sign = sscanf(arg, "%ld / %s", &arg1, arg2);
+        if (sign == 2)
         {
-            a = pushr;
-            stack_push(stk, &a);
-            a = dx;
-            stack_push(stk, &a);
+            type = mask_numb + mask_reg + mask_slash;
+            stack_push(stk, &type);
+            stack_push(stk, &arg1);
+            arg2_num = reg_name(arg2);
+            stack_push(stk, &arg2_num);
+            ip++;
             return;
         }
-        if(sscanf(arg, "%ld", &a) == 1)
+        if (sign == 1)
         {
-            proc_elem_t b = push;
-            stack_push(stk, &b);
-            stack_push(stk, &a);
+            type = mask_numb;
+            stack_push(stk, &type);
+            stack_push(stk, &arg1);
             return;
         }
-        fprintf(stderr, "SNTXERR: undefined argument %s\n", arg);
+        if (sscanf(arg, "%s", arg2))
+        {
+            if ((arg2_num = reg_name(arg2)) >= 0)
+            {
+                printf("type = %ld; arg2_num = %ld; arg2 = %s; ax = %d\n", type, arg2_num, arg2, ax);
+                type = mask_reg;
+                stack_push(stk, &type);
+                stack_push(stk, &arg2_num);
+                return;
+            }
+        }
+        fprintf(stderr, "SNTXERR: undefined argument (%s)\n", arg);
         abort();
     }
 }
@@ -225,7 +252,7 @@ static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
         (*ip)+=2;
         if(strcmp(arg, "ax") == 0)
         {
-            a = pushr;
+            a = mask_reg;
             stack_push(stk, &a);
             a = ax;
             stack_push(stk, &a);
@@ -233,7 +260,7 @@ static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
         }
         if(strcmp(arg, "bx") == 0)
         {
-            a = pushr;
+            a = mask_reg;
             stack_push(stk, &a);
             a = bx;
             stack_push(stk, &a);
@@ -241,7 +268,7 @@ static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
         }
         if(strcmp(arg, "cx") == 0)
         {
-            a = pushr;
+            a = mask_reg;
             stack_push(stk, &a);
             a = cx;
             stack_push(stk, &a);
@@ -249,7 +276,7 @@ static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
         }
         if(strcmp(arg, "dx") == 0)
         {
-            a = pushr;
+            a = mask_reg;
             stack_push(stk, &a);
             a = dx;
             stack_push(stk, &a);
@@ -258,6 +285,20 @@ static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
         fprintf(stderr, "SNTXERR: undefined argument %s\n", arg);
         abort();
     }
+}
+
+static proc_elem_t reg_name(char arg[CMD_SIZE])
+{
+    if (strcmp(arg, "ax") == 0)
+        return ax;
+    if (strcmp(arg, "bx") == 0)
+        return bx;
+    if (strcmp(arg, "cx") == 0)
+        return cx;
+    if (strcmp(arg, "dx") == 0)
+        return dx;
+    fprintf(stderr, "SNTXERR: undefined argument (%s)\n", arg);
+    abort();
 }
 
 static proc_elem_t search_lbl(FILE* fp, struct stack_t* lbl_stack)

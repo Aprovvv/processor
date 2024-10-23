@@ -22,10 +22,14 @@ enum cmds {
     LBL,
 };
 enum dests {
-    push = 1,
-    pushr = 2,
-    pushm = 4,
-    pushmr = 8,
+    mask_numb = 1,
+    mask_reg = 2,
+    mask_mem = 4,
+    mask_reg_mem = 8,
+    mask_plus = 16,
+    mask_minus = 32,
+    mask_star = 64,
+    mask_slash = 128,
 };
 enum reg_names {
     ax,
