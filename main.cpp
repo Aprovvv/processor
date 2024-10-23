@@ -12,10 +12,17 @@ struct spu {
     proc_elem_t* code;
     size_t code_size;
     proc_elem_t reg[4];
+    proc_elem_t* ram;
+    size_t ram_size;
 };
 
 static int pr (const void* p);
 static void dump(FILE* fp, const struct spu* proc, size_t ip);
+static void push_args(struct spu* proc, size_t* ip);
+static void pop_args(struct spu* proc, size_t* ip);
+static proc_elem_t get_arg(proc_elem_t type,
+                           proc_elem_t arg1,
+                           proc_elem_t arg2);
 
 int main()
 {
@@ -27,7 +34,8 @@ int main()
 
     FILE* fp = fopen("cmds.bin", "rb");
     stat("cmds.bin", &filedata);
-    proc.code = (proc_elem_t*)calloc(sizeof(proc_elem_t), (size_t)filedata.st_size);
+    proc.code = (proc_elem_t*)calloc(sizeof(proc_elem_t),
+                                     (size_t)filedata.st_size);
     proc.code_size = (size_t)filedata.st_size/sizeof(proc_elem_t);
     fread(proc.code, 1, (size_t)filedata.st_size, fp);
     proc.stk = stack_init(sizeof(proc_elem_t), 4);
@@ -41,26 +49,20 @@ int main()
     for(ip = 0; ip < proc.code_size; ip++)
     {
         //dump(stderr, &proc, ip);
+        //fprintf(stderr, "ax = %ld\n", proc.reg[ax]);
         proc_elem_t a, b;
         cmd = proc.code[ip];
         switch (cmd)
         {
             case PUSH:
             {
-                proc_elem_t dest = proc.code[++ip];
-                a = proc.code[++ip];
-                if (dest & 1)
-                    stack_push(proc.stk, &a);
-                if (dest & 2)
-                    stack_push(proc.stk, &proc.reg[a]);
+                push_args(&proc, &ip);
                 break;
             }
             case POP:
             {
-                ip++;
-                proc_elem_t dest = proc.code[++ip];
-                //fprintf(stderr, "dest = %d\n", dest);
-                stack_pop(proc.stk, &proc.reg[dest]);
+                pop_args(&proc, &ip);
+                //fprintf(stderr, "ax = %d", proc.reg[0]);
                 break;
             }
             case SUM:
@@ -150,6 +152,7 @@ int main()
             }
             case JME:
             {
+                //stack_printf(proc.stk, pr);
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
                 proc_elem_t addr = proc.code[++ip];
@@ -166,6 +169,83 @@ int main()
 stop_reading:
     free(proc.code);
     stack_destroy(proc.stk);
+}
+
+static void push_args(struct spu* proc, size_t* ip)
+{
+    proc_elem_t arg1 = 0, arg2 = 0, arg = 0;
+    proc_elem_t type = proc->code[++(*ip)];
+    if (type & mask_numb)
+        arg1 = proc->code[++(*ip)];
+    if (type & mask_reg)
+        arg2 = proc->reg[proc->code[++(*ip)]];
+
+    arg = get_arg(type, arg1, arg2);
+
+    if (type & mask_mem)
+        stack_push(proc->stk, &proc->ram[arg]);
+    else
+        stack_push(proc->stk, &arg);
+}
+
+static void pop_args(struct spu* proc, size_t* ip)
+{
+    proc_elem_t arg1 = 0, arg2 = 0, arg = 0;
+    proc_elem_t type = proc->code[++(*ip)];
+    if (type & mask_numb && !(type & mask_reg))
+    {
+        fprintf(stderr, "ATTEMPT TO POP TO A NUMBER\n");
+        abort();
+    }
+    if (type & mask_numb)
+        arg1 = proc->code[++(*ip)];
+    if (type & mask_reg)
+        arg2 = proc->code[++(*ip)];
+
+    arg = get_arg(type, arg1, arg2);
+
+    if (type & mask_mem)
+        stack_pop(proc->stk, &proc->ram[arg]);
+    else
+        stack_pop(proc->stk, &proc->reg[arg]);
+}
+
+static proc_elem_t get_arg(proc_elem_t type,
+                           proc_elem_t arg1,
+                           proc_elem_t arg2)
+{
+    proc_elem_t arg = 0;
+    if (type & mask_numb && type & mask_reg)
+    {
+        if (type & mask_plus)
+            arg = arg1 + arg2;
+        if (type & mask_star)
+            arg = arg1 * arg2;
+        if (type & mask_minus)
+            arg = arg1 - arg2;
+        if (type & mask_backminus)
+            arg = arg2 - arg1;
+        if (type & mask_slash)
+            arg = arg1 / arg2;
+        if (type & mask_backslash)
+            arg = arg2 / arg1;
+    }
+    else
+    {
+        if (type & mask_numb)
+        {
+            arg = arg1;
+            return arg;
+        }
+        if (type & mask_reg)
+        {
+            arg = arg2;
+            return arg;
+        }
+        fprintf(stderr, "WRONG ARG %d: NOTHING TO PUSH/POP\n", arg);
+        abort();
+    }
+    return arg;
 }
 
 static void dump(FILE* fp, const struct spu* proc, size_t ip)

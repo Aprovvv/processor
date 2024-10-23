@@ -22,14 +22,16 @@ enum cmds {
     LBL,
 };
 enum dests {
-    mask_numb    = 0x01,
-    mask_reg     = 0x02,
-    mask_mem     = 0x04,
-    mask_reg_mem = 0x08,
-    mask_plus    = 0x10,
-    mask_minus   = 0x20,
-    mask_star    = 0x40,
-    mask_slash   = 0x80,
+    mask_numb      = 0x001,
+    mask_reg       = 0x002,
+    mask_mem       = 0x004,
+    mask_reg_mem   = 0x008,
+    mask_plus      = 0x010,
+    mask_minus     = 0x020,
+    mask_backminus = 0x040,
+    mask_star      = 0x040,
+    mask_slash     = 0x080,
+    mask_backslash = 0x100
 };
 enum reg_names {
     ax,

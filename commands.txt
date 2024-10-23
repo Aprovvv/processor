@@ -1,8 +1,8 @@
 push 0
 pop ax
 lbl next
-push ax
-push ax
+push ax + 1
+push 1 - ax
 mult
 out
 push ax
