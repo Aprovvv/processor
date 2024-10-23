@@ -10,22 +10,28 @@ struct lbl_t {
     char name[LBL_SIZE];
 };
 
-static void get_str(FILE* fp, char* str, int size);
 static proc_elem_t search_lbl(FILE* fp, struct stack_t* lbl_stack);
+static proc_elem_t reg_name(char arg[CMD_SIZE]);
+static proc_elem_t get_type(char arg[CMD_SIZE],
+                            proc_elem_t* ptr1,
+                            proc_elem_t* ptr2,
+                            size_t* ip);
+
+static void get_str(FILE* fp, char* str, int size);
 static void push_args(struct stack_t* stk, FILE* input, size_t* ip);
 static void pop_args(struct stack_t* stk, FILE* input, size_t* ip);
-static proc_elem_t reg_name(char arg[CMD_SIZE]);
 static void jump(struct stack_t* stk,
                  struct stack_t* lbl_stack,
                  FILE* input,
                  size_t* ip,
                  proc_elem_t arg);
-static proc_elem_t get_type(char arg[CMD_SIZE], proc_elem_t* ptr1, proc_elem_t* ptr2, size_t* ip);
 
 int main()
 {
-    struct stack_t* stk = stack_init(sizeof(proc_elem_t), 4);
-    struct stack_t* lbl_stack = stack_init(sizeof(struct lbl_t), 4);
+    struct stack_t* stk =
+        stack_init(sizeof(proc_elem_t), 4);
+    struct stack_t* lbl_stack =
+        stack_init(sizeof(struct lbl_t), 4);
     FILE* input = fopen("commands.txt", "r");
     FILE* output = fopen("cmds.bin", "wb");
     char cmd[CMD_SIZE];
@@ -129,12 +135,14 @@ int main()
             fscanf(input, "%s", l.name);
             l.addr = (proc_elem_t)ip;
             stack_push(lbl_stack, &l);
-            fprintf(stderr, "l.name = %s; l.addr = %ld\n", l.name, l.addr);
+            fprintf(stderr, "l.name = %s; l.addr = %ld\n",
+                    l.name, l.addr);
             continue;
         }
         fprintf(stderr, "SNTXERR: %s\n", cmd);
     }
-    fwrite(stack_data(stk), sizeof(proc_elem_t), stack_size(stk), output);
+    fwrite(stack_data(stk), sizeof(proc_elem_t),
+           stack_size(stk), output);
     stack_destroy(stk);
     stack_destroy(lbl_stack);
     fclose(input);
@@ -153,7 +161,72 @@ static void jump(struct stack_t* stk,
     (*ip)++;
 }
 
-static proc_elem_t get_type(char arg[CMD_SIZE], proc_elem_t* ptr1, proc_elem_t* ptr2, size_t* ip)
+static void push_args(struct stack_t* stk, FILE* input, size_t* ip)
+{
+    proc_elem_t type = 0, arg1 = 0, arg2 = 0;
+    char arg[CMD_SIZE] = "";
+    get_str(input, arg, CMD_SIZE);
+
+    type = get_type(arg, &arg1, &arg2, ip);
+
+    fprintf(stderr, "type = %d = %#x\n", type, type);
+    if (type & mask_numb && type & mask_reg)
+    {
+        (*ip)++;
+        stack_push(stk, &type);
+        stack_push(stk, &arg1);
+        stack_push(stk, &arg2);
+        return;
+    }
+
+    if (type & mask_numb)
+    {
+        stack_push(stk, &type);
+        stack_push(stk, &arg1);
+        return;
+    }
+    if (type & mask_reg)
+    {
+        stack_push(stk, &type);
+        stack_push(stk, &arg2);
+        return;
+    }
+}
+
+static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
+{
+    proc_elem_t type = 0, arg1 = 0, arg2 = 0;
+    char arg[CMD_SIZE] = "";
+    get_str(input, arg, CMD_SIZE);
+
+    type = get_type(arg, &arg1, &arg2, ip);
+
+    fprintf(stderr, "type = %d = %#x\n", type, type);
+    if (type & mask_numb && type & mask_reg)
+    {
+        (*ip)++;
+        stack_push(stk, &type);
+        stack_push(stk, &arg1);
+        stack_push(stk, &arg2);
+        return;
+    }
+
+    if (type & mask_reg)
+    {
+        stack_push(stk, &type);
+        stack_push(stk, &arg2);
+        return;
+    }
+    if (type & mask_numb)
+    {
+        fprintf(stderr, "ATTEMPT TO POP TO A NUMBER\n");
+    }
+}
+
+static proc_elem_t get_type(char arg[CMD_SIZE],
+                            proc_elem_t* ptr1,
+                            proc_elem_t* ptr2,
+                            size_t* ip)
 {
     proc_elem_t type = 0;
     proc_elem_t arg1 = 0;
@@ -219,71 +292,8 @@ static proc_elem_t get_type(char arg[CMD_SIZE], proc_elem_t* ptr1, proc_elem_t* 
         type += mask_reg;
         return type;
     }
-    fprintf(stderr, "arg1 = %d, arg2 = %d, type = %d", arg1, arg2, type);
     fprintf(stderr, "SNTXERR: undefined argument (%s)\n", arg);
     abort();
-}
-
-static void push_args(struct stack_t* stk, FILE* input, size_t* ip)
-{
-    proc_elem_t type = 0, arg1 = 0, arg2 = 0;
-    char arg[CMD_SIZE] = "";
-    get_str(input, arg, CMD_SIZE);
-
-    type = get_type(arg, &arg1, &arg2, ip);
-
-    fprintf(stderr, "type = %d = %#x\n", type, type);
-    if (type & mask_numb && type & mask_reg)
-    {
-        (*ip)++;
-        stack_push(stk, &type);
-        stack_push(stk, &arg1);
-        stack_push(stk, &arg2);
-        return;
-    }
-
-    if (type & mask_numb)
-    {
-        stack_push(stk, &type);
-        stack_push(stk, &arg1);
-        return;
-    }
-    if (type & mask_reg)
-    {
-        stack_push(stk, &type);
-        stack_push(stk, &arg2);
-        return;
-    }
-}
-
-static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
-{
-    proc_elem_t type = 0, arg1 = 0, arg2 = 0;
-    char arg[CMD_SIZE] = "";
-    get_str(input, arg, CMD_SIZE);
-
-    type = get_type(arg, &arg1, &arg2, ip);
-
-    fprintf(stderr, "type = %d = %#x\n", type, type);
-    if (type & mask_numb && type & mask_reg)
-    {
-        (*ip)++;
-        stack_push(stk, &type);
-        stack_push(stk, &arg1);
-        stack_push(stk, &arg2);
-        return;
-    }
-
-    if (type & mask_reg)
-    {
-        stack_push(stk, &type);
-        stack_push(stk, &arg2);
-        return;
-    }
-    if (type & mask_numb)
-    {
-        fprintf(stderr, "ATTEMPT TO POP TO A NUMBER\n");
-    }
 }
 
 static proc_elem_t reg_name(char arg[CMD_SIZE])
@@ -296,8 +306,6 @@ static proc_elem_t reg_name(char arg[CMD_SIZE])
         return cx;
     if (strcmp(arg, "dx") == 0)
         return dx;
-    //fprintf(stderr, "SNTXERR: undefined argument (in reg_name) (%s)\n", arg);
-    //abort();
     return -1;
 }
 
@@ -328,7 +336,6 @@ static void get_str(FILE* fp, char* str, int size)
     while (i < size)
     {
         ch = fgetc(fp);
-        //putchar(ch);
         if (ch == '\n')
             break;
         str[i] = ch;

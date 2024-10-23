@@ -55,16 +55,12 @@ int main()
         switch (cmd)
         {
             case PUSH:
-            {
                 push_args(&proc, &ip);
                 break;
-            }
             case POP:
-            {
                 pop_args(&proc, &ip);
                 //fprintf(stderr, "ax = %d", proc.reg[0]);
                 break;
-            }
             case SUM:
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
@@ -242,7 +238,7 @@ static proc_elem_t get_arg(proc_elem_t type,
             arg = arg2;
             return arg;
         }
-        fprintf(stderr, "WRONG ARG %d: NOTHING TO PUSH/POP\n", arg);
+        fprintf(stderr, "WRONG ARG %ld: NOTHING TO PUSH/POP\n", arg);
         abort();
     }
     return arg;
@@ -253,11 +249,11 @@ static void dump(FILE* fp, const struct spu* proc, size_t ip)
     fprintf(fp, "------------------------------------\n");
     fprintf(fp, "code ");
     for (size_t i = 0; i < proc->code_size; i++)
-        fprintf(fp, "%2X ", i);
+        fprintf(fp, "%2X ", (unsigned int)i);
     fprintf(fp, "\n     ");
     for (size_t i = 0; i < proc->code_size; i++)
     {
-        fprintf(fp, "%2X ", proc->code[i]);
+        fprintf(fp, "%2X ", (unsigned int)proc->code[i]);
     }
     fprintf(fp, "\n      ");
     for (size_t i = 0; i < ip; i++)
