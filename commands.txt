@@ -1,8 +1,11 @@
 push 0
 pop ax
-lbl next
+jmp next
+push 666
+out
+next:
 push ax + 1
-push 1 - ax
+push 1 + ax
 mult
 out
 push ax

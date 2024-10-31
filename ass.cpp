@@ -39,6 +39,27 @@ int main()
     size_t ip = -1;
     while(fscanf(input, "%s", cmd) != EOF)
     {
+        ip++;
+        char* p = NULL;
+        if (strcmp(cmd, "push") == 0)
+            ip++;
+        if (strcmp(cmd, "pop") == 0)
+            ip++;
+        if ((p = strchr(cmd, ':')) != NULL)
+        {
+            struct lbl_t l = {};
+            *p = 0;
+            strcpy(l.name, cmd);
+            l.addr = (proc_elem_t)ip;
+            stack_push(lbl_stack, &l);
+            fprintf(stderr, "l.name = %s; l.addr = %ld\n",
+                    l.name, l.addr);
+        }
+    }
+    rewind(input);
+    ip = -1;
+    while(fscanf(input, "%s", cmd) != EOF)
+    {
         printf("%s\n", cmd);
         ip++;
         if (strcmp(cmd, "hlt") == 0)
@@ -126,17 +147,11 @@ int main()
             jump(stk, lbl_stack, input, &ip, JME);
             continue;
         }
-        if (strcmp(cmd, "lbl") == 0)
+        char* p = NULL;
+        if ((p = strchr(cmd, ':')) != NULL)
         {
             arg = LBL;
             stack_push(stk, &arg);
-            struct lbl_t l = {};
-            //get_str(input, l.name, LBL_SIZE);
-            fscanf(input, "%s", l.name);
-            l.addr = (proc_elem_t)ip;
-            stack_push(lbl_stack, &l);
-            fprintf(stderr, "l.name = %s; l.addr = %ld\n",
-                    l.name, l.addr);
             continue;
         }
         fprintf(stderr, "SNTXERR: %s\n", cmd);
@@ -169,7 +184,7 @@ static void push_args(struct stack_t* stk, FILE* input, size_t* ip)
 
     type = get_type(arg, &arg1, &arg2, ip);
 
-    fprintf(stderr, "type = %d = %#x\n", type, type);
+    fprintf(stderr, "type = %ld = %#x\n", type, type);
     if (type & mask_numb && type & mask_reg)
     {
         (*ip)++;
@@ -201,7 +216,7 @@ static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
 
     type = get_type(arg, &arg1, &arg2, ip);
 
-    fprintf(stderr, "type = %d = %#x\n", type, type);
+    fprintf(stderr, "type = %ld = %#x\n", type, type);
     if (type & mask_numb && type & mask_reg)
     {
         (*ip)++;
@@ -230,7 +245,6 @@ static proc_elem_t get_type(char arg[CMD_SIZE],
 {
     proc_elem_t type = 0;
     proc_elem_t arg1 = 0;
-    proc_elem_t arg2_num = 0;
     char arg2[CMD_SIZE] = "";
     int plus, minus, star, slash;
     int backplus, backminus, backstar, backslash;
@@ -242,6 +256,7 @@ static proc_elem_t get_type(char arg[CMD_SIZE],
     }
     if (strchr(arg, '[') != NULL && strchr(arg, ']') != NULL)
     {
+        // [a+b*s], [rdx+rax*8]
         plus      = sscanf(arg, "[%ld + %s]", &arg1, arg2);
         minus     = sscanf(arg, "[%ld - %s]", &arg1, arg2);
         star      = sscanf(arg, "[%ld * %s]", &arg1, arg2);
@@ -313,7 +328,6 @@ static proc_elem_t search_lbl(FILE* fp, struct stack_t* lbl_stack)
 {
     char name[LBL_SIZE] = "";
     struct lbl_t l = {};
-    //get_str(fp, name, LBL_SIZE);
     fscanf(fp, "%s", name);
     fprintf(stderr, "name = %s\n", name);
     for (size_t i = 0; i < stack_size(lbl_stack); i++)
