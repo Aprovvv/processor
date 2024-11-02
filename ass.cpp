@@ -18,21 +18,25 @@ static proc_elem_t get_type(char arg[CMD_SIZE],
                             size_t* ip);
 
 static void get_str(FILE* fp, char* str, int size);
-static void push_args(struct stack_t* stk, FILE* input, size_t* ip);
-static void pop_args(struct stack_t* stk, FILE* input, size_t* ip);
+static void ass_cmd_push(struct stack_t* stk, FILE* input, size_t* ip);
+static void ass_cmd_pop(struct stack_t* stk, FILE* input, size_t* ip);
 static void jump(struct stack_t* stk,
                  struct stack_t* lbl_stack,
                  FILE* input,
                  size_t* ip,
                  proc_elem_t arg);
 
-int main()
+int main(int argc, char* argv[])
 {
     struct stack_t* stk =
         stack_init(sizeof(proc_elem_t), 4);
     struct stack_t* lbl_stack =
         stack_init(sizeof(struct lbl_t), 4);
-    FILE* input = fopen("commands.txt", "r");
+    FILE* input;
+    if (argc > 1)
+        input = fopen(argv[1], "r");
+    else
+        input = fopen("commands.txt", "r");
     FILE* output = fopen("cmds.bin", "wb");
     char cmd[CMD_SIZE];
     proc_elem_t arg = 0;
@@ -42,9 +46,34 @@ int main()
         ip++;
         char* p = NULL;
         if (strcmp(cmd, "push") == 0)
-            ip++;
+        {
+            ip+=2;
+            //fprintf(stderr, "ip was = %d\n", ip);
+            fgets(cmd, CMD_SIZE, input);
+            //fprintf(stderr, "%s", cmd);
+            if(strchr(cmd, '+') != NULL)
+                ip++;
+            if(strchr(cmd, '-') != NULL)
+                ip++;
+            if(strchr(cmd, '*') != NULL)
+                ip++;
+            if(strchr(cmd, '/') != NULL)
+                ip++;
+            //fprintf(stderr, "ip is = %d\n", ip);
+        }
         if (strcmp(cmd, "pop") == 0)
-            ip++;
+        {
+            ip+=2;
+            fgets(cmd, CMD_SIZE, input);
+            if(strchr(cmd, '+') != NULL)
+                ip++;
+            if(strchr(cmd, '-') != NULL)
+                ip++;
+            if(strchr(cmd, '*') != NULL)
+                ip++;
+            if(strchr(cmd, '/') != NULL)
+                ip++;
+        }
         if ((p = strchr(cmd, ':')) != NULL)
         {
             struct lbl_t l = {};
@@ -52,15 +81,15 @@ int main()
             strcpy(l.name, cmd);
             l.addr = (proc_elem_t)ip;
             stack_push(lbl_stack, &l);
-            fprintf(stderr, "l.name = %s; l.addr = %ld\n",
-                    l.name, l.addr);
+            //fprintf(stderr, "l.name = %s; l.addr = %ld\n",
+                    //l.name, l.addr);
         }
     }
     rewind(input);
     ip = -1;
     while(fscanf(input, "%s", cmd) != EOF)
     {
-        printf("%s\n", cmd);
+        fprintf(stderr, "%s\n", cmd);
         ip++;
         if (strcmp(cmd, "hlt") == 0)
         {
@@ -70,16 +99,12 @@ int main()
         }
         if (strcmp(cmd, "push") == 0)
         {
-            arg = PUSH;
-            stack_push(stk, &arg);
-            push_args(stk, input, &ip);
+            ass_cmd_push(stk, input, &ip);
             continue;
         }
         if (strcmp(cmd, "pop") == 0)
         {
-            arg = POP;
-            stack_push(stk, &arg);
-            pop_args(stk, input, &ip);
+            ass_cmd_pop(stk, input, &ip);
             continue;
         }
         if (strcmp(cmd, "out") == 0)
@@ -147,6 +172,18 @@ int main()
             jump(stk, lbl_stack, input, &ip, JME);
             continue;
         }
+        if (strcmp(cmd, "sqrt") == 0)
+        {
+            arg = SQRT;
+            stack_push(stk, &arg);
+            continue;
+        }
+        if (strcmp(cmd, "draw") == 0)
+        {
+            arg = DRAW;
+            stack_push(stk, &arg);
+            continue;
+        }
         char* p = NULL;
         if ((p = strchr(cmd, ':')) != NULL)
         {
@@ -176,15 +213,20 @@ static void jump(struct stack_t* stk,
     (*ip)++;
 }
 
-static void push_args(struct stack_t* stk, FILE* input, size_t* ip)
+static void ass_cmd_push(struct stack_t* stk, FILE* input, size_t* ip)
 {
     proc_elem_t type = 0, arg1 = 0, arg2 = 0;
     char arg[CMD_SIZE] = "";
+
+    arg1 = PUSH;
+    stack_push(stk, &arg1);
+    arg1 = 0;
+
     get_str(input, arg, CMD_SIZE);
 
     type = get_type(arg, &arg1, &arg2, ip);
 
-    fprintf(stderr, "type = %ld = %#x\n", type, type);
+    //fprintf(stderr, "type = %ld = %#x\n", type, type);
     if (type & mask_numb && type & mask_reg)
     {
         (*ip)++;
@@ -208,16 +250,22 @@ static void push_args(struct stack_t* stk, FILE* input, size_t* ip)
     }
 }
 
-static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
+static void ass_cmd_pop(struct stack_t* stk, FILE* input, size_t* ip)
 {
     proc_elem_t type = 0, arg1 = 0, arg2 = 0;
     char arg[CMD_SIZE] = "";
+
+    arg1 = POP;
+    stack_push(stk, &arg1);
+    arg1 = 0;
+
     get_str(input, arg, CMD_SIZE);
 
     type = get_type(arg, &arg1, &arg2, ip);
 
-    fprintf(stderr, "type = %ld = %#x\n", type, type);
-    if (type & mask_numb && type & mask_reg)
+
+    fprintf(stderr, "Pop. type = %ld; arg1 = %ld, arg2 = %ld\n", type, arg1, arg2);
+    /*if (type & mask_numb && (type & mask_mem ||type & mask_reg))
     {
         (*ip)++;
         stack_push(stk, &type);
@@ -226,16 +274,39 @@ static void pop_args(struct stack_t* stk, FILE* input, size_t* ip)
         return;
     }
 
+    if (type & mask_reg || type & mask_mem)
+    {
+        stack_push(stk, &type);
+        stack_push(stk, &arg1);
+        return;
+    }*/
+    if (type & mask_reg && type & mask_numb)
+    {
+        (*ip)++;
+        stack_push(stk, &type);
+        stack_push(stk, &arg1);
+        stack_push(stk, &arg2);
+        return;
+    }
     if (type & mask_reg)
     {
         stack_push(stk, &type);
         stack_push(stk, &arg2);
         return;
     }
+    if (type & mask_mem && type & mask_numb)
+    {
+        stack_push(stk, &type);
+        stack_push(stk, &arg1);
+        return;
+    }
     if (type & mask_numb)
     {
         fprintf(stderr, "ATTEMPT TO POP TO A NUMBER\n");
+        abort();
     }
+    fprintf(stderr, "HOW TF DID YOU GET HERE\n");
+    abort();
 }
 
 static proc_elem_t get_type(char arg[CMD_SIZE],
@@ -265,6 +336,9 @@ static proc_elem_t get_type(char arg[CMD_SIZE],
         backminus = sscanf(arg, "[%s - %ld]", arg2, &arg1);
         backstar  = sscanf(arg, "[%s * %ld]", arg2, &arg1);
         backslash = sscanf(arg, "[%s / %ld]", arg2, &arg1);
+        char* p;
+        if ((p = strchr(arg2, ']')) != NULL)
+            *p = 0;
         type += mask_mem;
     }
     else
@@ -280,6 +354,7 @@ static proc_elem_t get_type(char arg[CMD_SIZE],
     }
     *ptr1 = arg1;
     *ptr2 = reg_name(arg2);
+    //fprintf(stderr, "arg1 = %d; arg2 = %s\n", arg1, arg2);
     (*ip)+=2;
     if (plus == 2 || backplus == 2)
         type += mask_numb + mask_reg + mask_plus;
@@ -293,6 +368,8 @@ static proc_elem_t get_type(char arg[CMD_SIZE],
         type += mask_numb + mask_reg + mask_slash;
     if (backslash == 2)
         type += mask_numb + mask_reg + mask_backslash;
+
+    fprintf(stderr, "type = %ld\n", type);
 
     if (type & mask_numb && type & mask_reg)
         return type;
@@ -329,13 +406,13 @@ static proc_elem_t search_lbl(FILE* fp, struct stack_t* lbl_stack)
     char name[LBL_SIZE] = "";
     struct lbl_t l = {};
     fscanf(fp, "%s", name);
-    fprintf(stderr, "name = %s\n", name);
+    //fprintf(stderr, "name = %s\n", name);
     for (size_t i = 0; i < stack_size(lbl_stack); i++)
     {
         stack_view(lbl_stack, i, &l);
         if (strcmp(name, l.name) == 0)
         {
-            fprintf(stderr, "addr = %ld\n", l.addr);
+            //fprintf(stderr, "addr = %ld\n", l.addr);
             return l.addr;
         }
     }

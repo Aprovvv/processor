@@ -20,6 +20,8 @@ enum cmds {
     JE,
     JME,
     LBL,
+    SQRT,
+    DRAW,
 };
 enum dests {
     mask_numb      = 0x001,
@@ -29,9 +31,9 @@ enum dests {
     mask_plus      = 0x010,
     mask_minus     = 0x020,
     mask_backminus = 0x040,
-    mask_star      = 0x040,
-    mask_slash     = 0x080,
-    mask_backslash = 0x100
+    mask_star      = 0x080,
+    mask_slash     = 0x100,
+    mask_backslash = 0x200
 };
 enum reg_names {
     ax,
