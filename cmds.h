@@ -22,6 +22,9 @@ enum cmds {
     LBL,
     SQRT,
     DRAW,
+    CALL,
+    RET,
+    IN,
 };
 enum dests {
     mask_numb      = 0x001,
@@ -42,3 +45,5 @@ enum reg_names {
     dx,
 };
 #endif
+/*
+*/

@@ -16,6 +16,7 @@ struct spu {
     proc_elem_t reg[4];
     proc_elem_t* ram;
     size_t ram_size;
+    struct stack_t* funcs_stk;
 };
 
 static int pr (const void* p);
@@ -40,7 +41,7 @@ int main()
     if (temp_p == NULL)
     {
         fprintf(stderr, "FAILED TO OPEN LOG FILE\n");
-        abort();
+        assert(0);
     }
     stderr = temp_p;
 
@@ -53,10 +54,11 @@ int main()
     proc.ram = (proc_elem_t*)calloc(sizeof(proc_elem_t), proc.ram_size);
     fread(proc.code, 1, (size_t)filedata.st_size, fp);
     proc.stk = stack_init(sizeof(proc_elem_t), 4);
+    proc.funcs_stk = stack_init(sizeof(proc_elem_t), 4);
 
     for(size_t i = 0; i < proc.code_size; i++)
     {
-        fprintf(stderr, "%3ld ", i);
+        fprintf(stderr, "%3zu ", i);
     }
     fprintf(stderr, "\n");
     for(size_t i = 0; i < proc.code_size; i++)
@@ -67,23 +69,18 @@ int main()
 
     for(ip = 0; ip < proc.code_size; ip++)
     {
-        //dump(stderr, &proc, ip);
-        //fprintf(stderr, "cmd = %d ax = %ld bx = %ld cx = %ld\n", proc.reg[ax]);
         proc_elem_t a, b;
         cmd = proc.code[ip];
+        //fprintf(stderr, "%d\n", cmd);
+        //stack_printf(proc.stk, pr);
+        //dump(stderr, &proc, ip);
         switch (cmd)
         {
             case PUSH:
-                //fprintf(stderr, "PUSH:\n");
                 push_args(&proc, &ip);
-                //stack_printf(proc.stk, pr);
-                //fprintf(stderr, "PUSH over!");
                 break;
             case POP:
-                //stack_printf(proc.stk, pr);
                 pop_args(&proc, &ip);
-                //stack_printf(proc.stk, pr);
-                //fprintf(stderr, "ax = %d", proc.reg[0]);
                 break;
             case SUM:
                 stack_pop(proc.stk, &a);
@@ -116,7 +113,7 @@ int main()
                 break;
             case OUT:
                 stack_pop(proc.stk, &a);
-                fprintf(stderr, "%ld\n", a);
+                fprintf(stderr, "%d\n", a);
                 break;
             case HLT:
                 goto stop_reading;
@@ -125,11 +122,8 @@ int main()
                 break;
             case JMP:
             {
-                //fprintf(stderr, "JMP:\n");
                 proc_elem_t addr = proc.code[++ip];
                 ip = (size_t)addr - 1;
-                //abort();
-                //fprintf(stderr, "JMP is over! ip = %zu\n", ip);
                 break;
             }
             case JA:
@@ -139,19 +133,17 @@ int main()
                 proc_elem_t addr = proc.code[++ip];
                 if (b > a)
                     ip = (size_t)addr - 1;
-                //stack_printf(proc.stk, pr);
                 break;
             }
             case JAE:
             {
-                //stack_printf(proc.stk, pr);
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
                 proc_elem_t addr = proc.code[++ip];
                 if (b >= a)
                 {
                     ip = (size_t)addr - 1;
-                    fprintf(stderr, "JUMPING\n");
+                    //fprintf(stderr, "JUMPING\n");
                 }
                 break;
             }
@@ -175,21 +167,15 @@ int main()
             }
             case JE:
             {
-                //fprintf(stderr, "JE:");
-                //stack_printf(proc.stk, pr);
                 stack_pop(proc.stk, &a);
-                //stack_printf(proc.stk, pr);
                 stack_pop(proc.stk, &b);
-                //stack_printf(proc.stk, pr);
                 proc_elem_t addr = proc.code[++ip];
                 if (b == a)
                     ip = (size_t)addr - 1;
-                //fprintf(stderr, "JE is over!");
                 break;
             }
             case JME:
             {
-                //stack_printf(proc.stk, pr);
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
                 proc_elem_t addr = proc.code[++ip];
@@ -203,12 +189,32 @@ int main()
                 {
                     for (int x = 0; x < 32; x++)
                     {
-                        fputc(proc.ram[32*y + x], stdout);
+                        fputc((int)proc.ram[32*y + x], stdout);
                         fputc(' ', stdout);
-                        //fprintf(stderr, "%ld", proc.ram[32*y + x]);
                     }
                     fputc('\n', stdout);
                 }
+                break;
+            }
+            case CALL:
+            {
+                proc_elem_t return_addr = ip + 2;
+                proc_elem_t addr = proc.code[++ip];
+                stack_push(proc.funcs_stk, &return_addr);
+                ip = (size_t)addr - 1;
+                break;
+            }
+            case RET:
+            {
+                proc_elem_t addr = 0;
+                stack_pop(proc.funcs_stk, &addr);
+                ip = (size_t)addr - 1;
+                break;
+            }
+            case IN:
+            {
+                scanf("%ld", &a);
+                stack_push(proc.stk, &a);
                 break;
             }
             default:
@@ -216,12 +222,12 @@ int main()
                 goto stop_reading;
                 break;
         }
-        //fprintf(stderr, "cmd = %ld ax = %ld bx = %ld cx = %ld\n", cmd, proc.reg[ax], proc.reg[bx], proc.reg[cx]);
     }
 stop_reading:
     free(proc.code);
     free(proc.ram);
     stack_destroy(proc.stk);
+    stack_destroy(proc.funcs_stk);
 }
 
 static void push_args(struct spu* proc, size_t* ip)
@@ -246,7 +252,6 @@ static void pop_args(struct spu* proc, size_t* ip)
 {
     proc_elem_t arg1 = 0, arg2 = 0, arg = 0;
     proc_elem_t type = proc->code[++(*ip)];
-    //fprintf(stderr, "pop type = %ld ", type);
     if (type & mask_numb && !type & mask_reg && !type & mask_mem)
     {
         fprintf(stderr, "ATTEMPT TO POP TO A NUMBER\n");
@@ -260,19 +265,15 @@ static void pop_args(struct spu* proc, size_t* ip)
     arg = get_arg_pop(proc, type, arg1, arg2);
 
     if (type & mask_mem)
-        stack_pop(proc->stk, &proc->ram[arg]);//TODO
+        stack_pop(proc->stk, &proc->ram[arg]);
     else
         stack_pop(proc->stk, &proc->reg[arg]);
-
-     /*if (type & mask_reg && type & mask_mem && arg2 == 2)
-        fprintf(stderr, "[%ld] = %ld\n", proc->reg[2], proc->ram[arg]);*/
 }
 
 static proc_elem_t get_arg_push(proc_elem_t type,
                            proc_elem_t arg1,
                            proc_elem_t arg2)
 {
-    //fprintf(stderr, "%ld %ld type = %ld\n", arg1, arg2);
     proc_elem_t arg = 0;
     if (type & mask_numb && type & mask_reg)
     {
@@ -304,7 +305,6 @@ static proc_elem_t get_arg_push(proc_elem_t type,
         fprintf(stderr, "WRONG ARG %ld: NOTHING TO PUSH\n", arg);
         assert(0);
     }
-    //fprintf(stderr, "arg = %ld\n", arg);
     return arg;
 }
 
@@ -313,7 +313,6 @@ static proc_elem_t get_arg_pop(struct spu* proc,
                                proc_elem_t arg1,
                                proc_elem_t arg2)
 {
-    //fprintf(stderr, "%ld %ld type = %ld\n", arg1, arg2);
     proc_elem_t arg = 0;
     if (type & mask_numb && type & mask_reg)
     {
@@ -334,8 +333,7 @@ static proc_elem_t get_arg_pop(struct spu* proc,
         }
         else
         {
-            fprintf(stderr, "SMTH WENT WRONG\n");
-            abort();
+            assert(0);
         }
     }
     else
@@ -358,7 +356,6 @@ static proc_elem_t get_arg_pop(struct spu* proc,
         fprintf(stderr, "WRONG ARG %ld: NOTHING TO POP\n", arg);
         assert(0);
     }
-    //fprintf(stderr, "arg = %ld\n", arg);
     return arg;
 }
 

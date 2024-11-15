@@ -48,9 +48,7 @@ int main(int argc, char* argv[])
         if (strcmp(cmd, "push") == 0)
         {
             ip+=2;
-            //fprintf(stderr, "ip was = %d\n", ip);
             fgets(cmd, CMD_SIZE, input);
-            //fprintf(stderr, "%s", cmd);
             if(strchr(cmd, '+') != NULL)
                 ip++;
             if(strchr(cmd, '-') != NULL)
@@ -59,7 +57,6 @@ int main(int argc, char* argv[])
                 ip++;
             if(strchr(cmd, '/') != NULL)
                 ip++;
-            //fprintf(stderr, "ip is = %d\n", ip);
         }
         if (strcmp(cmd, "pop") == 0)
         {
@@ -81,13 +78,11 @@ int main(int argc, char* argv[])
             strcpy(l.name, cmd);
             l.addr = (proc_elem_t)ip;
             stack_push(lbl_stack, &l);
-            //fprintf(stderr, "l.name = %s; l.addr = %ld\n",
-                    //l.name, l.addr);
         }
     }
     rewind(input);
     ip = -1;
-    while(fscanf(input, "%s", cmd) != EOF)
+    while(fscanf(input, "%s", cmd) != EOF)//TODO define in scanf
     {
         fprintf(stderr, "%s\n", cmd);
         ip++;
@@ -184,6 +179,23 @@ int main(int argc, char* argv[])
             stack_push(stk, &arg);
             continue;
         }
+        if (strcmp(cmd, "call") == 0)
+        {
+            jump(stk, lbl_stack, input, &ip, CALL);
+            continue;
+        }
+        if (strcmp(cmd, "ret") == 0)
+        {
+            arg = RET;
+            stack_push(stk, &arg);
+            continue;
+        }
+        if (strcmp(cmd, "in") == 0)
+        {
+            arg = IN;
+            stack_push(stk, &arg);
+            continue;
+        }
         char* p = NULL;
         if ((p = strchr(cmd, ':')) != NULL)
         {
@@ -226,7 +238,6 @@ static void ass_cmd_push(struct stack_t* stk, FILE* input, size_t* ip)
 
     type = get_type(arg, &arg1, &arg2, ip);
 
-    //fprintf(stderr, "type = %ld = %#x\n", type, type);
     if (type & mask_numb && type & mask_reg)
     {
         (*ip)++;
@@ -263,23 +274,7 @@ static void ass_cmd_pop(struct stack_t* stk, FILE* input, size_t* ip)
 
     type = get_type(arg, &arg1, &arg2, ip);
 
-
     fprintf(stderr, "Pop. type = %ld; arg1 = %ld, arg2 = %ld\n", type, arg1, arg2);
-    /*if (type & mask_numb && (type & mask_mem ||type & mask_reg))
-    {
-        (*ip)++;
-        stack_push(stk, &type);
-        stack_push(stk, &arg1);
-        stack_push(stk, &arg2);
-        return;
-    }
-
-    if (type & mask_reg || type & mask_mem)
-    {
-        stack_push(stk, &type);
-        stack_push(stk, &arg1);
-        return;
-    }*/
     if (type & mask_reg && type & mask_numb)
     {
         (*ip)++;
