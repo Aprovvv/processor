@@ -97,23 +97,24 @@ int main()
             case MULT:
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
-                a = b*a;
+                a = b*a/PRECISION;
                 stack_push(proc.stk, &a);
                 break;
             case DIV:
                 stack_pop(proc.stk, &a);
                 stack_pop(proc.stk, &b);
-                a = b/a;
+                a = (b*PRECISION)/a;
                 stack_push(proc.stk, &a);
                 break;
             case SQRT:
                 stack_pop(proc.stk, &a);
-                a = (proc_elem_t)sqrt(a);
+                a = (proc_elem_t)sqrt(a*PRECISION);
+                //fprintf(stderr, "a = %ld\n", a);
                 stack_push(proc.stk, &a);
                 break;
             case OUT:
                 stack_pop(proc.stk, &a);
-                fprintf(stderr, "%d\n", a);
+                fprintf(stderr, "%.4f\n", (float)(a)/PRECISION);
                 break;
             case HLT:
                 goto stop_reading;
@@ -189,7 +190,7 @@ int main()
                 {
                     for (int x = 0; x < 32; x++)
                     {
-                        fputc((int)proc.ram[32*y + x], stdout);
+                        fputc((int)proc.ram[32*y + x]/PRECISION, stdout);
                         fputc(' ', stdout);
                     }
                     fputc('\n', stdout);
@@ -213,7 +214,9 @@ int main()
             }
             case IN:
             {
-                scanf("%ld", &a);
+                float f;
+                scanf("%f", &f);
+                a = (proc_elem_t)(f*PRECISION);
                 stack_push(proc.stk, &a);
                 break;
             }
@@ -232,7 +235,6 @@ stop_reading:
 
 static void push_args(struct spu* proc, size_t* ip)
 {
-
     proc_elem_t arg1 = 0, arg2 = 0, arg = 0;
     proc_elem_t type = proc->code[++(*ip)];
     if (type & mask_numb)
@@ -243,9 +245,14 @@ static void push_args(struct spu* proc, size_t* ip)
     arg = get_arg_push(type, arg1, arg2);
 
     if (type & mask_mem)
+    {
+        arg /= PRECISION;
         stack_push(proc->stk, &proc->ram[arg]);
+    }
     else
+    {
         stack_push(proc->stk, &arg);
+    }
 }
 
 static void pop_args(struct spu* proc, size_t* ip)
@@ -262,7 +269,9 @@ static void pop_args(struct spu* proc, size_t* ip)
     if (type & mask_reg)
         arg2 = proc->code[++(*ip)];
 
+    fprintf(stdout, "type = %d, arg1 = %d, arg2 = %d\n", type, arg1, arg2);
     arg = get_arg_pop(proc, type, arg1, arg2);
+    fprintf(stdout, "arg = %d\n", arg);
 
     if (type & mask_mem)
         stack_pop(proc->stk, &proc->ram[arg]);
@@ -280,15 +289,15 @@ static proc_elem_t get_arg_push(proc_elem_t type,
         if (type & mask_plus)
             arg = arg1 + arg2;
         if (type & mask_star)
-            arg = arg1 * arg2;
+            arg = arg1 * arg2 / PRECISION;
         if (type & mask_minus)
             arg = arg1 - arg2;
         if (type & mask_backminus)
             arg = arg2 - arg1;
         if (type & mask_slash)
-            arg = arg1 / arg2;
+            arg = (arg1 * PRECISION) / arg2;
         if (type & mask_backslash)
-            arg = arg2 / arg1;
+            arg = (arg2 * PRECISION) / arg1;
     }
     else
     {
@@ -319,17 +328,17 @@ static proc_elem_t get_arg_pop(struct spu* proc,
         if (type & mask_mem)
         {
             if (type & mask_plus)
-                arg = arg1 + proc->reg[arg2];
+                arg = arg1 + proc->reg[arg2]/PRECISION;
             if (type & mask_star)
-                arg = arg1 * proc->reg[arg2];
+                arg = arg1 * proc->reg[arg2]/PRECISION;
             if (type & mask_minus)
-                arg = arg1 - proc->reg[arg2];
+                arg = arg1 - proc->reg[arg2]/PRECISION;
             if (type & mask_backminus)
-                arg = proc->reg[arg2] - arg1;
+                arg = proc->reg[arg2]/PRECISION - arg1;
             if (type & mask_slash)
-                arg = arg1 / proc->reg[arg2];
+                arg = arg1 / proc->reg[arg2]/PRECISION;
             if (type & mask_backslash)
-                arg = proc->reg[arg2] / arg1;
+                arg = proc->reg[arg2]/PRECISION / arg1;
         }
         else
         {
@@ -345,7 +354,7 @@ static proc_elem_t get_arg_pop(struct spu* proc,
         }
         if (type & mask_reg && type & mask_mem)
         {
-            arg = proc->reg[arg2];
+            arg = proc->reg[arg2] / PRECISION;
             return arg;
         }
         if (type & mask_reg)

@@ -3,6 +3,7 @@
 typedef long proc_elem_t;
 const int LBL_SIZE = 32;
 const int CMD_SIZE = 32;
+const int PRECISION = 10000;
 enum cmds {
     HLT,
     PUSH,

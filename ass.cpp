@@ -273,6 +273,7 @@ static void ass_cmd_pop(struct stack_t* stk, FILE* input, size_t* ip)
     get_str(input, arg, CMD_SIZE);
 
     type = get_type(arg, &arg1, &arg2, ip);
+    arg1 /= PRECISION;
 
     fprintf(stderr, "Pop. type = %ld; arg1 = %ld, arg2 = %ld\n", type, arg1, arg2);
     if (type & mask_reg && type & mask_numb)
@@ -310,7 +311,7 @@ static proc_elem_t get_type(char arg[CMD_SIZE],
                             size_t* ip)
 {
     proc_elem_t type = 0;
-    proc_elem_t arg1 = 0;
+    float arg1 = 0;
     char arg2[CMD_SIZE] = "";
     int plus, minus, star, slash;
     int backplus, backminus, backstar, backslash;
@@ -323,14 +324,14 @@ static proc_elem_t get_type(char arg[CMD_SIZE],
     if (strchr(arg, '[') != NULL && strchr(arg, ']') != NULL)
     {
         // [a+b*s], [rdx+rax*8]
-        plus      = sscanf(arg, "[%ld + %s]", &arg1, arg2);
-        minus     = sscanf(arg, "[%ld - %s]", &arg1, arg2);
-        star      = sscanf(arg, "[%ld * %s]", &arg1, arg2);
-        slash     = sscanf(arg, "[%ld / %s]", &arg1, arg2);
-        backplus  = sscanf(arg, "[%s + %ld]", arg2, &arg1);
-        backminus = sscanf(arg, "[%s - %ld]", arg2, &arg1);
-        backstar  = sscanf(arg, "[%s * %ld]", arg2, &arg1);
-        backslash = sscanf(arg, "[%s / %ld]", arg2, &arg1);
+        plus      = sscanf(arg, "[%f + %s]", &arg1, arg2);
+        minus     = sscanf(arg, "[%f - %s]", &arg1, arg2);
+        star      = sscanf(arg, "[%f * %s]", &arg1, arg2);
+        slash     = sscanf(arg, "[%f / %s]", &arg1, arg2);
+        backplus  = sscanf(arg, "[%s + %f]", arg2, &arg1);
+        backminus = sscanf(arg, "[%s - %f]", arg2, &arg1);
+        backstar  = sscanf(arg, "[%s * %f]", arg2, &arg1);
+        backslash = sscanf(arg, "[%s / %f]", arg2, &arg1);
         char* p;
         if ((p = strchr(arg2, ']')) != NULL)
             *p = 0;
@@ -338,16 +339,16 @@ static proc_elem_t get_type(char arg[CMD_SIZE],
     }
     else
     {
-        backplus  = sscanf(arg, "%s + %ld", arg2, &arg1);
-        backminus = sscanf(arg, "%s - %ld", arg2, &arg1);
-        backstar  = sscanf(arg, "%s * %ld", arg2, &arg1);
-        backslash = sscanf(arg, "%s / %ld", arg2, &arg1);
-        plus      = sscanf(arg, "%ld + %s", &arg1, arg2);
-        minus     = sscanf(arg, "%ld - %s", &arg1, arg2);
-        star      = sscanf(arg, "%ld * %s", &arg1, arg2);
-        slash     = sscanf(arg, "%ld / %s", &arg1, arg2);
+        backplus  = sscanf(arg, "%s + %f", arg2, &arg1);
+        backminus = sscanf(arg, "%s - %f", arg2, &arg1);
+        backstar  = sscanf(arg, "%s * %f", arg2, &arg1);
+        backslash = sscanf(arg, "%s / %f", arg2, &arg1);
+        plus      = sscanf(arg, "%f + %s", &arg1, arg2);
+        minus     = sscanf(arg, "%f - %s", &arg1, arg2);
+        star      = sscanf(arg, "%f * %s", &arg1, arg2);
+        slash     = sscanf(arg, "%f / %s", &arg1, arg2);
     }
-    *ptr1 = arg1;
+    *ptr1 = (proc_elem_t)(arg1*PRECISION);
     *ptr2 = reg_name(arg2);
     //fprintf(stderr, "arg1 = %d; arg2 = %s\n", arg1, arg2);
     (*ip)+=2;
